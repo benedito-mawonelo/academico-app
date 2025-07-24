@@ -1,1 +1,6 @@
 // app global css in SCSS form
+$primary: #0B6623;  // green-10
+$secondary: #43A047;
+$accent: #AED581;
+
+@import 'quasar/src/css/index.sass';
