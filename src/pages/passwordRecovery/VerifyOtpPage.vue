@@ -64,7 +64,7 @@
   </q-page>
 </template>
 
-<script setup>
+<!-- <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
@@ -139,8 +139,140 @@ const verifyOtp = async () => {
     })
   }, 1500)
 }
-</script>
+</script> -->
 
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useQuasar } from 'quasar'
+
+const $q = useQuasar()
+const router = useRouter()
+const route = useRoute()
+
+const otp = ref(Array(6).fill(''))
+const otpInputs = ref([])
+const loading = ref(false)
+const resendCooldown = ref(30)
+
+// Captura o número e o canal do envio (whatsapp ou sms)
+const phoneNumber = ref(localStorage.getItem('otpPhone') || '')
+const via = ref(route.query.via || 'whatsapp') // padrão whatsapp
+const viaWhatsapp = computed(() => via.value.toLowerCase() === 'whatsapp')
+
+// Formatação simples para o telefone com +258 (ajuste se quiser)
+const formattedPhone = computed(() => {
+  if (phoneNumber.value.length === 9) {
+    return `${phoneNumber.value.slice(0, 2)} ${phoneNumber.value.slice(2, 5)} ${phoneNumber.value.slice(5)}`
+  }
+  return phoneNumber.value
+})
+
+// Verifica se o OTP está completo
+const isOtpComplete = computed(() => {
+  return otp.value.every(d => d !== '' && /^\d$/.test(d))
+})
+
+// Inicia o timer do reenvio
+let timer = null
+const startCooldown = () => {
+  if (timer) clearInterval(timer)
+  resendCooldown.value = 30
+  timer = setInterval(() => {
+    if (resendCooldown.value > 0) {
+      resendCooldown.value--
+    } else {
+      clearInterval(timer)
+      timer = null
+    }
+  }, 1000)
+}
+
+// Foca no próximo input quando digita um número
+const focusNext = (index, event) => {
+  const key = event.key
+  if (/^\d$/.test(key) && index < 6) {
+    otpInputs.value[index]?.focus()
+  }
+}
+
+// Foca no anterior se apagar e campo vazio
+const focusPrev = (index, event) => {
+  if (event.key === 'Backspace' && otp.value[index - 1] === '') {
+    if (index > 1) {
+      otpInputs.value[index - 2]?.focus()
+    }
+  }
+}
+
+// Colar código completo (6 dígitos)
+const handlePaste = (event) => {
+  const pasteData = event.clipboardData.getData('text').trim()
+  if (/^\d{6}$/.test(pasteData)) {
+    otp.value = pasteData.split('')
+    event.preventDefault()
+  }
+}
+
+const verifyOtp = () => {
+  if (!isOtpComplete.value) {
+    $q.notify({
+      color: 'red',
+      position: 'top',
+      message: 'Por favor, preencha o código completo de 6 dígitos.',
+      icon: 'error'
+    })
+    return
+  }
+
+  loading.value = true
+  const codigoDigitado = otp.value.join('')
+  const codigoSalvo = localStorage.getItem('otpCode')
+
+  setTimeout(() => {
+    loading.value = false
+
+    if (codigoDigitado === codigoSalvo) {
+      localStorage.setItem('reauthenticated', 'true')
+      router.push('/otp-success')
+    } else {
+      $q.notify({
+        color: 'red',
+        position: 'top',
+        message: 'Código incorreto. Tente novamente.',
+        icon: 'error'
+      })
+      otp.value = Array(6).fill('')
+      otpInputs.value[0]?.focus()
+    }
+  }, 1000)
+}
+
+const resendOtp = () => {
+  if (resendCooldown.value > 0) return
+
+  // Implementar lógica real de reenvio aqui, ex: chamar API para reenviar OTP via WhatsApp ou SMS
+
+  // Simulação:
+  const novoCodigo = Math.floor(100000 + Math.random() * 900000).toString()
+  localStorage.setItem('otpCode', novoCodigo)
+
+  $q.notify({
+    color: 'green',
+    position: 'top',
+    message: `Código reenviado ${viaWhatsapp.value ? 'via WhatsApp' : 'via SMS'} para +258 ${formattedPhone.value}`,
+    icon: 'check_circle'
+  })
+
+  startCooldown()
+}
+
+onMounted(() => {
+  startCooldown()
+  otpInputs.value[0]?.focus()
+})
+</script>
 <style scoped>
 .auth-card {
   width: 100%;

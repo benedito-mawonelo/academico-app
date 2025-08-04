@@ -23,9 +23,22 @@
 
         <!-- Apelido -->
         <q-input outlined label="Apelido" v-model="form.apelido" color="green-10" class="form-input" />
-
-         <!-- Email -->
-        <q-input outlined label="Email" v-model="form.email" color="green-10" class="form-input" />
+<!-- Celular -->
+        <q-input
+          outlined
+          label="Celular"
+          color="green-10"
+          v-model="form.telefone"
+          class="form-input"
+          prefix="(+258)"
+          type="tel"
+          :error="telefoneEmUso"
+          error-message="Este número já está em uso"
+        >
+          <template v-slot:append>
+            <q-icon name="error" color="red" v-if="telefoneEmUso" />
+          </template>
+        </q-input>
 
 
         <!-- Sexo e Ano de nascimento -->
@@ -48,6 +61,7 @@
           />
         </div>
 
+
         <!-- Província -->
         <q-select
           outlined
@@ -58,22 +72,10 @@
           class="form-input"
         />
 
-        <!-- Celular -->
-        <q-input
-          outlined
-          label="Celular"
-          color="green-10"
-          v-model="form.telefone"
-          class="form-input"
-          prefix="(+258)"
-          type="tel"
-          :error="telefoneEmUso"
-          error-message="Este número já está em uso"
-        >
-          <template v-slot:append>
-            <q-icon name="error" color="red" v-if="telefoneEmUso" />
-          </template>
-        </q-input>
+
+          <!-- Email -->
+        <q-input outlined label="Email (opcional)" v-model="form.email" color="green-10" class="form-input" />
+
 
         <!-- Palavra Passe -->
         <q-input
@@ -130,6 +132,8 @@
 <script setup>
 import { ref, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
+import { useAuthStore } from 'stores/modules/auth'; // ajuste o path se necessário
+const store = useAuthStore();
 // import { useStore } from 'vuex';
 
 const router = useRouter();
@@ -175,24 +179,31 @@ function scrollToInput(refName) {
   });
 }
 
-// async function criarConta() {
-  // const exists = await store.dispatch('auth/findUserByTelefone', form.value);
-  // telefoneEmUso.value = !!exists;
+async function criarConta() {
+  const exists = await store.findUserByTelefone(form.value);
+  telefoneEmUso.value = !!exists;
 
-//   if (!telefoneEmUso.value) {
-//     const payload = { ...form.value };
-//     delete payload.confirmPassword;
-//     payload.email = payload.email || payload.telefone + '@gmail.com';
+  if (!telefoneEmUso.value) {
+    const TrueEmail = form.value.email || ''
+    const telefoneEmail = form.value.telefone + '@gmail.com'
+    const payload = {
+       ...form.value,
+      email: telefoneEmail,
+      email_true: TrueEmail};
+    // delete payload.confirmPassword;
+    // payload.email = payload.email || payload.telefone + '@gmail.com';
 
-//     // const success = await store.dispatch('auth/registerUser', payload);
+    const success = await store.registerUser(payload);
 
-//     // if (success) {
-//       router.push({ name: 'complete-profile', query: { id: success.id } });
-//     } else {
-//       console.error('Erro ao registrar o usuário');
-//     }
-//   }
-// }
+    if (success) {
+      router.push({ path:'upload-photo', query: { id: success.id } });
+    } else {
+      console.error('Erro ao registrar o usuário');
+    }
+  }
+}
+
+
 </script>
 
 <style scoped>

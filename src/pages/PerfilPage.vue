@@ -12,7 +12,7 @@
       <q-btn class="q-mt-md" flat icon="edit" label="Editar Foto" @click="editarFoto" />
 
       <q-card class="q-mt-lg q-pa-md full-width">
-        <q-input label="Nome completo" v-model="user.nome" />
+        <q-input label="Nome completo" v-model="user.name" />
         <q-input label="Email" v-model="user.email" type="email" />
         <q-input label="Instituição" v-model="user.instituicao" />
         <q-input label="Ano Acadêmico" v-model="user.ano" />
@@ -30,16 +30,62 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
+import { firebaseAuth, db } from 'src/boot/firebase'
+import { onAuthStateChanged } from 'firebase/auth';
+import {  doc, getDoc } from 'firebase/firestore'
+
+
 
 const user = ref({
-  nome: 'Carlos Alberto',
-  email: 'carlos@email.com',
-  instituicao: 'Universidade de Maputo',
-  ano: '3º',
-  nivel: 'Universitário',
-  foto: 'https://cdn.quasar.dev/img/avatar.png'
+  name: '',
+  email: '',
+  instituicao: '',
+  ano: '',
+  nivel: '',
+  foto: ''
+})
+
+const loading = ref(true)
+
+
+onMounted(() => {
+  onAuthStateChanged(firebaseAuth, async (currentUser) => {
+    if (!currentUser) {
+      console.warn('Nenhum usuário autenticado.');
+      return;
+    }
+
+    try {
+      console.log('Usuário logado:', currentUser.uid);
+      const uid = currentUser.uid;
+      const docRef = doc(db, 'users_academico', uid);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        user.value = {
+          name: data.name,
+          email: data.email,
+          instituicao: data.instituicao,
+          ano: data.ano,
+          nivel: data.nivel,
+          foto: data.imagem
+        };
+
+
+      } else {
+        console.warn('Usuário não encontrado em users_academico.');
+      }
+    } catch (error) {
+      console.error('Erro ao carregar perfil:', error);
+    } finally {
+      loading.value = false;
+    }
+  });
 });
+
+
 
 function editarFoto() {
   console.log('Editar foto...');

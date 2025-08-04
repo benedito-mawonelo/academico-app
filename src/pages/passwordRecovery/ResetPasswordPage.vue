@@ -74,7 +74,7 @@
   </q-page>
 </template>
 
-<script setup>
+<!-- <script setup>
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 
@@ -103,7 +103,319 @@ const resetPassword = async () => {
     })
   }, 1500)
 }
+</script> -->
+
+<!-- <script setup>
+import { ref, computed } from 'vue'
+import { db, firebaseAuth } from 'boot/firebase'
+import { useQuasar } from 'quasar'
+
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  updateDoc
+} from 'firebase/firestore'
+
+
+
+
+
+const $q = useQuasar()
+
+const newPassword = ref('')
+const confirmPassword = ref('')
+const showPassword = ref(false)
+const loading = ref(false)
+
+const passwordsValid = computed(() => {
+  return newPassword.value.length >= 8 &&
+         confirmPassword.value === newPassword.value
+})
+
+// const resetPassword = async () => {
+//   loading.value = true
+
+//   if (newPassword.value !== confirmPassword.value) {
+//     $q.notify({
+//       color: 'negative',
+//       message: 'As senhas não coincidem.',
+//       position: 'top',
+//       icon: 'error'
+//     })
+//     loading.value = false
+//     return
+//   }
+
+//   const telefone = localStorage.getItem('otpPhone')
+
+//   console.log(telefone)
+//   if (!telefone) {
+//     $q.notify({
+//       color: 'negative',
+//       message: 'Número de telefone não encontrado.',
+//       position: 'top',
+//       icon: 'error'
+//     })
+//     loading.value = false
+//     return
+//   }
+
+//   try {
+//     const usersRef = db.collection('users_academico')
+//     const snapshot = await usersRef.where('telefone', '==', telefone).get()
+
+//     if (snapshot.empty) {
+//       $q.notify({
+//         color: 'negative',
+//         message: 'Usuário não encontrado.',
+//         position: 'top',
+//         icon: 'error'
+//       })
+//       loading.value = false
+//       return
+//     }
+
+//     const userDoc = snapshot.docs[0]
+//     const userData = userDoc.data()
+//     const emailFake = `${telefone}@gmail.com`
+//     const senhaAtual = userData.password
+
+//     const userCredential = await firebaseAuth.signInWithEmailAndPassword(emailFake, senhaAtual)
+
+//     await userCredential.user.updatePassword(newPassword.value)
+
+//     await usersRef.doc(userDoc.id).update({
+//       password: newPassword.value,
+//       updatedAt: new Date().toISOString()
+//     })
+
+//     localStorage.removeItem('otpPhone')
+//     localStorage.removeItem('otpCode')
+//     localStorage.removeItem('reauthenticated')
+
+//     $q.notify({
+//       color: 'positive',
+//       message: 'Senha atualizada com sucesso!',
+//       position: 'top',
+//       icon: 'check'
+//     })
+
+//   } catch (err) {
+//     console.error('Erro ao redefinir a senha:', err)
+//     $q.notify({
+//       color: 'negative',
+//       message: 'Erro ao redefinir a senha. Verifique se o número está correto.',
+//       position: 'top',
+//       icon: 'error'
+//     })
+//   } finally {
+//     loading.value = false
+//   }
+// }
+
+const resetPassword = async () => {
+  loading.value = true
+
+  if (newPassword.value !== confirmPassword.value) {
+    $q.notify({
+      color: 'negative',
+      message: 'As senhas não coincidem.',
+      position: 'top',
+      icon: 'error'
+    })
+    loading.value = false
+    return
+  }
+
+  const telefone = localStorage.getItem('otpPhone')
+  if (!telefone) {
+    $q.notify({
+      color: 'negative',
+      message: 'Número de telefone não encontrado.',
+      position: 'top',
+      icon: 'error'
+    })
+    loading.value = false
+    return
+  }
+
+  try {
+    const usersRef = collection(db, 'users_academico')
+    const q = query(usersRef, where('telefone', '==', telefone))
+    const snapshot = await getDocs(q)
+
+    if (snapshot.empty) {
+      $q.notify({
+        color: 'negative',
+        message: 'Usuário não encontrado.',
+        position: 'top',
+        icon: 'error'
+      })
+      loading.value = false
+      return
+    }
+
+    const userDoc = snapshot.docs[0]
+    const userData = userDoc.data()
+    const emailFake = `${telefone}@gmail.com`
+    const senhaAtual = userData.password
+
+    const userCredential = await firebaseAuth.signInWithEmailAndPassword(emailFake, senhaAtual)
+    await userCredential.user.updatePassword(newPassword.value)
+
+    const userRef = doc(db, 'users_academico', userDoc.id)
+    await updateDoc(userRef, {
+      password: newPassword.value,
+      updatedAt: new Date().toISOString()
+    })
+
+    localStorage.removeItem('otpPhone')
+    localStorage.removeItem('otpCode')
+    localStorage.removeItem('reauthenticated')
+
+    $q.notify({
+      color: 'positive',
+      message: 'Senha atualizada com sucesso!',
+      position: 'top',
+      icon: 'check'
+    })
+
+  } catch (err) {
+    console.error('Erro ao redefinir a senha:', err)
+    $q.notify({
+      color: 'negative',
+      message: 'Erro ao redefinir a senha. Verifique se o número está correto.',
+      position: 'top',
+      icon: 'error'
+    })
+  } finally {
+    loading.value = false
+  }
+}
+
+</script> -->
+
+
+<script setup>
+import { ref, computed } from 'vue'
+import { db, firebaseAuth } from 'boot/firebase'
+import { useQuasar } from 'quasar'
+import { useRouter } from 'vue-router'
+const router = useRouter()
+
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  doc,
+  updateDoc
+} from 'firebase/firestore'
+
+import {
+  signInWithEmailAndPassword,
+  updatePassword
+} from 'firebase/auth'
+
+const $q = useQuasar()
+
+const newPassword = ref('')
+const confirmPassword = ref('')
+const showPassword = ref(false)
+const loading = ref(false)
+
+const passwordsValid = computed(() => {
+  return newPassword.value.length >= 8 &&
+         confirmPassword.value === newPassword.value
+})
+
+const resetPassword = async () => {
+  loading.value = true
+
+  if (newPassword.value !== confirmPassword.value) {
+    $q.notify({
+      color: 'negative',
+      message: 'As senhas não coincidem.',
+      position: 'top',
+      icon: 'error'
+    })
+    loading.value = false
+    return
+  }
+
+  const telefone = localStorage.getItem('otpPhone')
+  if (!telefone) {
+    $q.notify({
+      color: 'negative',
+      message: 'Número de telefone não encontrado.',
+      position: 'top',
+      icon: 'error'
+    })
+    loading.value = false
+    return
+  }
+
+  try {
+    const usersRef = collection(db, 'users_academico')
+    const q = query(usersRef, where('telefone', '==', telefone))
+    const snapshot = await getDocs(q)
+
+    if (snapshot.empty) {
+      $q.notify({
+        color: 'negative',
+        message: 'Usuário não encontrado.',
+        position: 'top',
+        icon: 'error'
+      })
+      loading.value = false
+      return
+    }
+
+    const userDoc = snapshot.docs[0]
+    const userData = userDoc.data()
+    // const emailFake = `${telefone}@gmail.com`
+    const emailFake = userData.email
+    const senhaAtual = userData.password
+
+    // Uso correto das funções modulares
+    const userCredential = await signInWithEmailAndPassword(firebaseAuth, emailFake, senhaAtual)
+    await updatePassword(userCredential.user, newPassword.value)
+
+    const userRef = doc(db, 'users_academico', userDoc.id)
+    await updateDoc(userRef, {
+      password: newPassword.value,
+      updatedAt: new Date().toISOString()
+    })
+
+    localStorage.removeItem('otpPhone')
+    localStorage.removeItem('otpCode')
+    localStorage.removeItem('reauthenticated')
+
+    // $q.notify({
+    //   color: 'positive',
+    //   message: 'Senha atualizada com sucesso!',
+    //   position: 'top',
+    //   icon: 'check'
+    // })
+    router.push('reset-password-success')
+
+  } catch (err) {
+    console.error('Erro ao redefinir a senha:', err)
+    $q.notify({
+      color: 'negative',
+      message: 'Erro ao redefinir a senha. Verifique se o número está correto.',
+      position: 'top',
+      icon: 'error'
+    })
+  } finally {
+    loading.value = false
+  }
+}
 </script>
+
 
 <style scoped>
 .auth-card {

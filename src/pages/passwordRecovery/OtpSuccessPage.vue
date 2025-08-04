@@ -34,13 +34,13 @@
 </template>
 
 <script setup>
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { ref } from 'vue'
 
 
-const route = useRoute()
+// const route = useRoute()
 const router = useRouter()
-const phoneNumber = ref(route.query.phone || '')
+const phoneNumber = ref(localStorage.getItem('otpPhone') || '')
 
 const goToResetPassword = () => {
   router.push({

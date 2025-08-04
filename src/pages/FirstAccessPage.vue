@@ -95,9 +95,13 @@
   </q-page>
 </template>
 
+
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { getAuth } from 'firebase/auth'
+import { doc, setDoc } from 'firebase/firestore'
+import { db } from 'boot/firebase' // ou ajuste o caminho conforme seu projeto
 
 const router = useRouter()
 
@@ -109,7 +113,6 @@ const loading = ref(false)
 
 const niveis = [
   { label: 'Ensino Médio', value: 'ensino_medio' },
-  // { label: 'Ensino Técnico', value: 'ensino_tecnico' },
   { label: 'Licenciatura', value: 'graduacao' },
   { label: 'Pós-graduação', value: 'pos' },
   { label: 'Mestrado', value: 'mestrado' },
@@ -160,14 +163,31 @@ function updateCursos() {
   curso.value = null
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   loading.value = true
+  try {
+    const auth = getAuth()
+    const user = auth.currentUser
 
-  // Simulação de envio para API
-  setTimeout(() => {
-    loading.value = false
+    if (!user) throw new Error('Usuário não autenticado.')
+
+    const docRef = doc(db, 'users_academico', user.uid)
+
+    await setDoc(docRef, {
+      nivel: nivel.value,
+      curso: curso.value,
+      instituicao: instituicao.value,
+      ano: ano.value,
+      preenchidoEm: new Date()
+    }, { merge: true })
+
     router.push('/dashboard')
-  }, 1500)
+  } catch (error) {
+    console.error('Erro ao salvar dados:', error)
+    alert('Erro ao salvar seus dados. Tente novamente.')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 

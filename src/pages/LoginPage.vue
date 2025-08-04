@@ -11,22 +11,43 @@
         <q-form @submit.prevent="handleLogin" class="q-gutter-md">
           <q-input
             v-model="email"
-            label="Email"
-            type="email"
+            label="Telefone"
+            type="number"
             outlined
             bg-color="white"
             color="green-10"
-            :rules="[val => !!val || 'Email é obrigatório', isValidEmail]"
+            :rules="[val => !!val || 'Telefone é obrigatório']"
           >
             <template v-slot:prepend>
-              <q-icon name="mail" color="green-10" />
+              <q-icon name="phone" color="green-10" />
             </template>
           </q-input>
 
-          <q-input
+          <!-- <q-input
             v-model="senha"
             label="Senha"
             type="password"
+            outlined
+            bg-color="white"
+            color="green-10"
+            :rules="[val => !!val || 'Senha é obrigatória', val => val.length >= 6 || 'Mínimo 6 caracteres']"
+          >
+            <template v-slot:prepend>
+              <q-icon name="lock" color="green-10" />
+            </template>
+            <template v-slot:append>
+              <q-icon
+                :name="showPassword ? 'visibility_off' : 'visibility'"
+                class="cursor-pointer"
+                @click="showPassword = !showPassword"
+              />
+            </template>
+          </q-input> -->
+
+          <q-input
+  v-model="senha"
+  :type="showPassword ? 'text' : 'password'"
+            label="Senha"
             outlined
             bg-color="white"
             color="green-10"
@@ -75,7 +96,7 @@
           </div>
 
           <q-btn
-            label="Entrar com Carta Fàcil"
+            label="Entrar com Carta Facil"
             color="white"
             text-color="grey-9"
             class="full-width google-btn"
@@ -101,7 +122,7 @@
   </q-page>
 </template>
 
-<script setup>
+<!-- <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -139,7 +160,178 @@ const handleLogin = async () => {
 const loginGoogle = () => {
   console.log('Login com Google (a implementar)')
 }
+</script> -->
+
+
+<script setup>
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from 'src/stores/modules/auth'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from 'src/boot/firebase' // ajuste conforme seu caminho
+import { getAuth } from 'firebase/auth'
+
+
+const email = ref('')
+const senha = ref('')
+const showPassword = ref(false)
+const loading = ref(false)
+const router = useRouter()
+const authStore = useAuthStore()
+
+
+// const isValidEmail = (val) => {
+//   const emailPattern = /^(?=[a-zA-Z0-9@._%+-]{6,254}$)[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,63}$/
+//   return emailPattern.test(val) || 'Email inválido'
+// }
+
+const handleLogin = async () => {
+  loading.value = true
+  try {
+    const fakeEmail = `${email.value.trim()}@gmail.com`
+    const firstAccess = await authStore.login(fakeEmail, senha.value)
+
+    const user = getAuth().currentUser
+
+    if (!user) throw new Error('Usuário não autenticado')
+
+    const docRef = doc(db, 'users_academico', user.uid)
+    const docSnap = await getDoc(docRef)
+
+    if (!docSnap.exists()) {
+      alert('Dados do usuário não encontrados.')
+      return
+    }
+
+    const userData = docSnap.data()
+
+    if (userData.isAdmin === true) {
+      router.push('/admin')
+    } else if (firstAccess) {
+      router.push('/first-access')
+    } else {
+      router.push('/dashboard')
+    }
+
+  } catch (error) {
+    if (error.code === 'auth/user-not-found') {
+      alert('Usuário não encontrado.')
+    } else if (error.code === 'auth/wrong-password') {
+      alert('Senha incorreta.')
+    } else {
+      alert('Erro ao entrar: ' + error.message)
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+
+
+// const handleLogin = async () => {
+//   loading.value = true
+//   try {
+//     const firstAccess = await authStore.login(email.value, senha.value)
+
+//     if (firstAccess) {
+//       router.push('/first-access')
+//     } else {
+//       router.push('/dashboard')
+//     }
+
+//   } catch (error) {
+//     if (error.code === 'auth/user-not-found') {
+//       alert('Usuário não encontrado.')
+//     } else if (error.code === 'auth/wrong-password') {
+//       alert('Senha incorreta.')
+//     } else {
+//       alert('Erro ao entrar: ' + error.message)
+//     }
+//   } finally {
+//     loading.value = false
+//   }
+// }
+
+
+// const handleLogin = async () => {
+//   loading.value = true
+//   try {
+//     await authStore.login(email.value, senha.value)
+//     router.push('/dashboard')
+//   } catch (error) {
+//     loading.value = false
+//     if (error.code === 'auth/user-not-found') {
+//       alert('Usuário não encontrado.')
+//     } else if (error.code === 'auth/wrong-password') {
+//       alert('Senha incorreta.')
+//     } else {
+//       alert('Erro ao entrar: ' + error.message)
+//     }
+//   } finally {
+//     loading.value = false
+//   }
+// }
+
+
+
+// const handleLogin = async () => {
+//   loading.value = true
+//   try {
+//     await store.dispatch('auth/login', {
+//       email: email.value,
+//       password: senha.value
+//     })
+//     router.push('/dashboard')
+//   } catch (error) {
+//     loading.value = false
+//     if (error.code === 'auth/user-not-found') {
+//       alert('Usuário não encontrado.')
+//     } else if (error.code === 'auth/wrong-password') {
+//       alert('Senha incorreta.')
+//     } else {
+//       alert('Erro ao entrar: ' + error.message)
+//     }
+//   }
+// }
+
+
+
+
+// const handleLogin = async () => {
+//   loading.value = true
+
+//   try {
+//     await signInWithEmailAndPassword(firebaseAuth, email.value, senha.value)
+//     loading.value = false
+//     router.push('/dashboard') // rota após login
+//   } catch (error) {
+//     loading.value = false
+//     // Exemplo básico de tratamento de erro
+//     if (error.code === 'auth/user-not-found') {
+//       alert('Usuário não encontrado.')
+//     } else if (error.code === 'auth/wrong-password') {
+//       alert('Senha incorreta.')
+//     } else {
+//       alert('Erro ao entrar: ' + error.message)
+//     }
+//   }
+// }
+
+// const loginGoogle = async () => {
+//   try {
+//     const provider = new firebase.auth.GoogleAuthProvider()
+//     await auth.signInWithPopup(provider)
+//     router.push('/dashboard')
+//   } catch (error) {
+//     alert('Erro no login Google: ' + error.message)
+//   }
+// }
+
+
 </script>
+
+
+
 
 <style lang="scss" scoped>
 .login-card {

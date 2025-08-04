@@ -9,13 +9,13 @@
         </div>
 
         <q-btn
-          label="Fazer Login"
+          label="Continuar"
           color="green-10"
           text-color="white"
           class="full-width"
           size="lg"
           unelevated
-          @click="$router.push('/login')"
+          @click="$router.push('dashboard')"
         />
       </q-card-section>
     </q-card>
