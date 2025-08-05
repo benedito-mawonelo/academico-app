@@ -10,6 +10,7 @@ const routes = [
       // Páginas principais
       { path: '', component: () => import('pages/IndexPage.vue') },
       { path: 'login', component: () => import('pages/LoginPage.vue') },
+      { path: 'loginCF', component: () => import('pages/LoginPageCF.vue') },
       { path: 'register', component: () => import('pages/RegisterPage.vue') },
       { path: 'upload-photo', component: () => import('pages/UploadPhoto.vue') },
       { path: 'first-access', component: () => import('pages/FirstAccessPage.vue') },
@@ -31,10 +32,12 @@ const routes = [
       { path: 'scanner', component: () => import('pages/ScannerPage.vue') },
       { path: 'uploads', component: () => import('pages/BibliotecaUploadsPage.vue') },
       { path: 'profile', component: () => import('pages/PerfilPage.vue') },
-      { path: 'loja-academica', component: () => import('pages/LojaPage.vue') },
+      { path: 'cursos', component: () => import('pages/LojaPage.vue') },
       { path: 'Notificacoes', component: () => import('pages/NotificacoesPage.vue') },
-      {path: '/video-player', component: () => import('pages/VideoPlayerPage.vue')},
+      { path: '/video-player', component: () => import('pages/VideoPlayerPage.vue')},
+      { path: 'editar-perfil', component: () => import('../pages/EditProfile.vue') },
 
+      { path: 'curso-detalhes', component: () => import('../pages/CourseDetails.vue') },
       // Novas rotas para as telas do material de estudo
       { path: 'videos', component: () => import('pages/meuMaterialDeEstudo/VideosScreen.vue') },
       { path: 'favorites', component: () => import('pages/meuMaterialDeEstudo/FavoritosScreen.vue') },

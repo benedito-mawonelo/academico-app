@@ -1,10 +1,11 @@
+
 <template>
   <q-page class="bg-grey-1 flex flex-center">
     <q-card class="login-card">
       <q-card-section class="text-center q-pb-none">
         <q-avatar size="80px" color="green-10" text-color="white" icon="lock" />
-        <div class="text-h4 text-weight-bold text-green-10 q-mt-md">Bem-vindo de volta</div>
-        <div class="text-subtitle1 text-grey-7">Faça login para acessar sua conta</div>
+        <div class="text-h4 text-weight-bold text-green-10 q-mt-md">Bem-vindo</div>
+        <div class="text-subtitle1 text-grey-7">Faça login para acessar sua conta usando credenciais do carta facil </div>
       </q-card-section>
 
       <q-card-section class="q-pt-md">
@@ -96,12 +97,12 @@
           </div>
 
           <q-btn
-            label="Entrar com Carta Facil"
+            label="Entrar com Explicador Universitario"
             color="white"
             text-color="grey-9"
             class="full-width google-btn"
-            :icon="`img:${cfLogo}`"
-            @click="$router.push('loginCF')"
+            icon="img:https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg"
+            @click="$router.push('login')"
           />
         </q-form>
       </q-card-section>
@@ -170,8 +171,6 @@ import { useAuthStore } from 'src/stores/modules/auth'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from 'src/boot/firebase' // ajuste conforme seu caminho
 import { getAuth } from 'firebase/auth'
-import cfLogo from 'src/assets/cflogo.png'
-
 
 
 const email = ref('')

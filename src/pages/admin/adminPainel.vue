@@ -1,8 +1,9 @@
-```vue
 <template>
+    <app-header @navigate="goTo" />
+
   <q-page class="admin-dashboard">
     <!-- App Bar -->
-    <q-header class="header-modern">
+    <!-- <q-header class="header-modern">
       <q-toolbar class="header-content">
         <q-btn flat round dense icon="menu" class="q-mr-sm animate__animated animate__fadeIn">
           <q-tooltip>Abrir Menu</q-tooltip>
@@ -23,7 +24,7 @@
           <q-tooltip>Perfil</q-tooltip>
         </q-btn>
       </q-toolbar>
-    </q-header>
+    </q-header> -->
 
     <!-- Tabs -->
     <q-tabs
@@ -683,6 +684,7 @@
       </q-card>
     </q-dialog>
   </q-page>
+  <app-footer />
 </template>
 
 <script setup>
@@ -692,6 +694,8 @@ import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy 
 import { db } from 'boot/firebase'
 import { uploadFile } from '/services/uploadService'
 import CrudTable from 'src/components/CrudTable.vue'
+import AppHeader from 'components/AppHeader.vue';
+// import AppFooter from 'components/AppFooter.vue';
 
 // Initialize MathJax and Plotly
 const MathJax = window.MathJax
@@ -1853,4 +1857,4 @@ function showError(message, error) {
   }
 }
 </style>
-```
+

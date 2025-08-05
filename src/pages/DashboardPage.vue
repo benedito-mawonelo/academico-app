@@ -499,7 +499,7 @@ const cards = ref([
     icon: 'workspace_premium',
     color: 'deep-orange',
     gradient: 'linear-gradient(135deg, #FF5722 0%, #FF9800 100%)',
-    route: 'cursos-certificados'
+    route: 'cursos'
   },
   {
     label: 'Minha Biblioteca',
@@ -515,20 +515,20 @@ const cards = ref([
     gradient: 'linear-gradient(135deg, #3F51B5 0%, #2196F3 100%)',
     route: 'scanner'
   },
-  {
-    label: 'Banco de Exames',
-    icon: 'assignment',
-    color: 'purple',
-    gradient: 'linear-gradient(135deg, #673AB7 0%, #9C27B0 100%)',
-    route: 'exames'
-  },
-  {
-    label: 'Anotações Pessoais',
-    icon: 'edit_note',
-    color: 'green',
-    gradient: 'linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%)',
-    route: 'anotacoes'
-  },
+  // {
+  //   label: 'Banco de Exames',
+  //   icon: 'assignment',
+  //   color: 'purple',
+  //   gradient: 'linear-gradient(135deg, #673AB7 0%, #9C27B0 100%)',
+  //   route: 'exames'
+  // },
+  // {
+  //   label: 'Anotações Pessoais',
+  //   icon: 'edit_note',
+  //   color: 'green',
+  //   gradient: 'linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%)',
+  //   route: 'anotacoes'
+  // },
   {
     label: 'Meu material de estudo',
     icon: 'folder_special',
@@ -544,7 +544,7 @@ const cards = ref([
     route: 'forum'
   },
   {
-    label: 'Calendário Acadêmico',
+    label: 'Minha Agenda',
     icon: 'calendar_today',
     color: 'pink',
     gradient: 'linear-gradient(135deg, #E91E63 0%, #F06292 100%)',

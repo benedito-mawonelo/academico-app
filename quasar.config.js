@@ -110,13 +110,14 @@ export default defineConfig((ctx) => {
 
       // Quasar plugins
       plugins: [
-        'Notify'
+        'Notify', 'Dialog', 'Loading'
       ],
+      components: ['QMenu', 'QList', 'QItem', 'QItemSection', 'QItemLabel', 'QAvatar', 'QBadge', 'QBtn', 'QIcon', 'QSeparator', 'QChip', 'QTooltip']
     },
 
-    // animations: 'all', // --- includes all animations
+    animations: 'all', // --- includes all animations
     // https://v2.quasar.dev/options/animations
-    animations: [],
+    // animations: [],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#sourcefiles
     // sourceFiles: {

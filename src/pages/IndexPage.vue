@@ -364,7 +364,7 @@ $q-primary: #2E7D32; // Verde floresta
 $q-secondary: #62d404; // Verde limão
 $q-bg: #F5F5F5; // Cinza claro
 $q-dark: #1A1A2E; // Cinza escuro
-$q-accent: #FF8C00; // Laranja suave
+$q-accent: #ff3838; // Laranja suave
 
 .q-layout {
   background: $q-bg;
