@@ -8,6 +8,9 @@
         <p class="header-subtitle animate__animated animate__fadeIn animate__delay-1s">
           Explore vídeos, módulos, resumos e mais para dominar esta disciplina
         </p>
+        <div class="q-mt-md">
+          <q-btn color="primary" unelevated icon="assignment" label="Ver Testes" @click="goToTests" />
+        </div>
       </div>
     </div>
 
@@ -67,10 +70,21 @@
                 :ratio="16/9"
                 class="video-thumbnail"
                 placeholder-src="https://via.placeholder.com/320x180"
-              />
-              <q-card-section>
-                <div class="video-card-title">{{ video.titulo }}</div>
-                <div class="video-card-description">{{ video.descricao }}</div>
+              >
+                <div v-if="isWatched(video.id)" class="absolute-top-left q-ma-sm">
+                  <q-chip dense color="positive" text-color="white" icon="check">Visto</q-chip>
+                </div>
+              </q-img>
+              <q-card-section class="row items-start no-wrap">
+                <div class="col">
+                  <div class="video-card-title">{{ video.titulo }}</div>
+                  <div class="video-card-description">{{ video.descricao }}</div>
+                  <q-linear-progress v-if="isWatched(video.id)" :value="1" color="positive" class="q-mt-sm" rounded />
+                </div>
+                <div class="col-auto">
+                  <q-btn flat round :icon="isFavorite(video.id) ? 'favorite' : 'favorite_border'" color="red"
+                        @click.stop="toggleFavorite(video)" />
+                </div>
               </q-card-section>
             </q-card>
           </div>
@@ -179,9 +193,10 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { collection, getDocs, query, orderBy, where } from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, where, doc, setDoc, deleteDoc } from 'firebase/firestore'
 import { db } from 'boot/firebase'
 import { useQuasar } from 'quasar'
+import { getAuth } from 'firebase/auth'
 import CadernoCard from 'src/components/CadernoCard.vue'
 
 const $q = useQuasar()
@@ -194,11 +209,17 @@ const cadeira = ref({ nome: 'Carregando...' })
 const modulos = ref([])
 const temas = ref([])
 const videos = ref([])
+const watchedSet = ref(new Set())
+const favoritesSet = ref(new Set())
 const resumos = ref([]) // Placeholder, assuming resumos collection
 const anotacaoTexto = ref('')
 const saving = ref(false)
 const loading = ref(false)
 const cardVisible = ref([])
+
+function goToTests() {
+  router.push(`/cadeiras/${cadeiraId}/tests`)
+}
 
 async function loadData() {
   loading.value = true
@@ -248,6 +269,10 @@ async function loadData() {
     const videosSnapshot = await getDocs(videosQuery)
     videos.value = videosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
 
+    // Carregar progresso de vídeos do usuário
+    await loadWatched()
+    await loadFavorites()
+
     // Initialize card visibility
     cardVisible.value = new Array(videos.value.length + modulos.value.length + resumos.value.length).fill(false)
 
@@ -295,6 +320,48 @@ function goToModulo(id) {
   router.push(`/cadeiras/${cadeiraId}/modulos/${id}`)
 }
 
+function isWatched(videoId) {
+  return watchedSet.value.has(videoId)
+}
+
+function isFavorite(videoId) {
+  return favoritesSet.value.has(videoId)
+}
+
+async function toggleFavorite(video) {
+  try {
+    const auth = getAuth()
+    const user = auth.currentUser
+    if (!user) {
+      $q.notify({ type: 'warning', message: 'Faça login para favoritar' })
+      return
+    }
+    const favId = `${user.uid}_${video.id}`
+    const ref = doc(db, 'userFavorites', favId)
+    if (favoritesSet.value.has(video.id)) {
+      await deleteDoc(ref)
+      favoritesSet.value.delete(video.id)
+      $q.notify({ type: 'info', message: 'Removido dos favoritos' })
+    } else {
+      await setDoc(ref, {
+        userId: user.uid,
+        videoId: video.id,
+        titulo: video.titulo,
+        descricao: video.descricao,
+        url: video.url,
+        temaId: video.temaId || null,
+        duracao: video.duracao || 0,
+        createdAt: new Date()
+      }, { merge: true })
+      favoritesSet.value.add(video.id)
+      $q.notify({ type: 'positive', message: 'Adicionado aos favoritos' })
+    }
+  } catch (e) {
+    console.error('Erro ao alternar favorito:', e)
+    $q.notify({ type: 'negative', message: 'Falha ao atualizar favorito' })
+  }
+}
+
 function playVideo(video) {
   const embedUrl = getEmbedUrl(video.url)
   router.push({
@@ -305,6 +372,7 @@ function playVideo(video) {
       descricao: video.descricao,
       url: embedUrl,
       duracao: video.duracao,
+      temaId: video.temaId
     }
   })
 }
@@ -338,6 +406,31 @@ async function salvarAnotacao() {
 onMounted(async () => {
   await loadData()
 })
+
+async function loadWatched() {
+  try {
+    const auth = getAuth()
+    const user = auth.currentUser
+    if (!user) return
+    const snap = await getDocs(query(collection(db, 'playHistory'), where('userId', '==', user.uid)))
+    const ids = new Set(snap.docs.map(d => d.data().videoId))
+    watchedSet.value = ids
+  } catch (e) {
+    console.error('Erro ao carregar progresso de vídeos:', e)
+  }
+}
+
+async function loadFavorites() {
+  try {
+    const auth = getAuth()
+    const user = auth.currentUser
+    if (!user) return
+    const snap = await getDocs(query(collection(db, 'userFavorites'), where('userId', '==', user.uid)))
+    favoritesSet.value = new Set(snap.docs.map(d => d.data().videoId))
+  } catch (e) {
+    console.error('Erro ao carregar favoritos:', e)
+  }
+}
 </script>
 
 <style lang="scss" scoped>

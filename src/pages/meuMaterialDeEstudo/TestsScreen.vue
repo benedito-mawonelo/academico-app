@@ -57,10 +57,10 @@
           <q-btn flat round icon="close" @click="endTest" />
         </div>
         <div class="quiz-content">
-          <q-card class="question-card" v-if="currentQuestion">
+<q-card class="question-card" v-if="currentQuestion" ref="questionContainer">
             <q-card-section>
               <div class="question-text">
-                <span v-if="isLatex(currentQuestion.texto)" v-html="renderKatex(currentQuestion.texto)"></span>
+<span v-if="isLatex(currentQuestion.texto)" v-html="renderMath(currentQuestion.texto)"></span>
                 <span v-else>{{ currentQuestion.texto }}</span>
               </div>
               <q-list class="options-list">
@@ -75,7 +75,7 @@
                 >
                   <q-item-section>
                     <q-item-label>
-                      <span v-if="isLatex(option)" v-html="renderKatex(option)"></span>
+<span v-if="isLatex(option)" v-html="renderMath(option)"></span>
                       <span v-else>{{ option }}</span>
                     </q-item-label>
                   </q-item-section>
@@ -83,25 +83,36 @@
               </q-list>
               <div v-if="showResult && selectedOption !== null && currentQuestion.opcoes[selectedOption] !== currentQuestion.respostaCorreta" class="explanation">
                 <strong>Explicação:</strong>
-                <span v-if="isLatex(currentQuestion.explicacao)" v-html="renderKatex(currentQuestion.explicacao)"></span>
+<span v-if="isLatex(currentQuestion.explicacao)" v-html="renderMath(currentQuestion.explicacao)"></span>
                 <span v-else>{{ currentQuestion.explicacao }}</span>
               </div>
             </q-card-section>
-            <q-card-actions align="right" class="quiz-actions">
-              <q-btn
-                v-if="!showResult"
-                :disable="selectedOption === null"
-                color="primary"
-                label="Confirmar"
-                @click="submitAnswer"
-              />
-              <q-btn
-                v-if="showResult"
-                flat
-                color="primary"
-                :label="currentQuestionIndex < currentTest.questions.length - 1 ? 'Próxima' : 'Finalizar'"
-                @click="nextQuestion"
-              />
+            <q-card-actions align="between" class="quiz-actions">
+              <div>
+                <q-btn
+                  v-if="currentQuestionIndex > 0"
+                  flat
+                  color="primary"
+                  label="Anterior"
+                  @click="prevQuestion"
+                />
+              </div>
+              <div>
+                <q-btn
+                  v-if="!showResult"
+                  :disable="selectedOption === null"
+                  color="primary"
+                  label="Confirmar"
+                  @click="submitAnswer"
+                />
+                <q-btn
+                  v-if="showResult"
+                  flat
+                  color="primary"
+                  :label="currentQuestionIndex < currentTest.questions.length - 1 ? 'Próxima' : 'Finalizar'"
+                  @click="nextQuestion"
+                />
+              </div>
             </q-card-actions>
           </q-card>
           <div v-else class="empty-state text-center q-pa-md">
@@ -146,9 +157,6 @@
         active-color="primary"
         indicator-color="primary"
       >
-        <q-tab name="videos" icon="ondemand_video" label="Vídeos" @click="goTo('videos')" />
-        <q-tab name="favorites" icon="favorite" label="Favoritos" @click="goTo('favorites')" />
-        <q-tab name="notes" icon="edit_note" label="Notas" @click="goTo('notes')" />
         <q-tab name="doubts" icon="help" label="Dúvidas" @click="goTo('doubts')" />
         <q-tab name="tests" icon="assignment" label="Testes" @click="goTo('tests')" />
       </q-tabs>
@@ -157,14 +165,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useTestStore } from '../../stores/modules/testsQuizz'
 import { firebaseAuth } from '../../boot/firebase'
-import katex from 'katex'
+const MathJax = window.MathJax
 
 const router = useRouter()
+const route = useRoute()
 const $q = useQuasar()
 const testStore = useTestStore()
 
@@ -177,8 +186,12 @@ const showSuccessDialog = ref(false)
 const showResultDialog = ref(false)
 const score = ref(0)
 const loading = ref(false)
+// Novo: mapear respostas e travas por questão
+const answers = ref({}) // { [questionId]: selectedIndex }
+const locked = ref({})  // { [questionId]: true }
 
 const tests = computed(() => testStore.tests)
+const questionContainer = ref(null)
 const currentQuestion = computed(() => {
   const question = currentTest.value ? currentTest.value.questions[currentQuestionIndex.value] : null
   console.log('Questão atual:', question)
@@ -200,23 +213,24 @@ const isLatex = (text) => {
   return /\\[\w]+(?:{[^{}]*})*|\$.*\$|\\\[.*\\\]|[_^]/.test(text)
 }
 
-const renderKatex = (text) => {
-  if (!text || typeof text !== 'string') {
-    console.warn('Texto inválido para renderKatex:', text)
-    return text || ''
-  }
+const hasDelimiters = (t) => /\$[\s\S]*\$|\\\([\s\S]*\\\)|\\\[[\s\S]*\\\]/.test(t)
+const renderMath = (text) => {
+  if (!text || typeof text !== 'string') return text || ''
+  return hasDelimiters(text) ? text : `\\(${text}\\)`
+}
+
+const typeset = async () => {
+  await nextTick()
   try {
-    // Normaliza barras invertidas para garantir consistência
-    const normalizedText = text.replace(/\\+/g, '\\')
-    console.log(`Renderizando KaTeX: "${normalizedText}"`)
-    return katex.renderToString(normalizedText, {
-      throwOnError: false,
-      displayMode: false,
-      strict: false,
-    })
-  } catch (error) {
-    console.error('Erro ao renderizar KaTeX:', error.message, 'Texto:', text)
-    return text // Fallback para texto simples se houver erro
+    if (MathJax && typeof MathJax.typesetPromise === 'function') {
+      if (questionContainer.value) {
+        await MathJax.typesetPromise([questionContainer.value.$el || questionContainer.value])
+      } else {
+        await MathJax.typesetPromise()
+      }
+    }
+  } catch (e) {
+    console.error('MathJax typeset error:', e)
   }
 }
 
@@ -231,7 +245,12 @@ onMounted(async () => {
   }
   loading.value = true
   try {
-    await testStore.loadTests()
+    const cadeiraId = route.params.id
+    if (cadeiraId) {
+      await testStore.loadTestsByCadeira(cadeiraId)
+    } else {
+      await testStore.loadTests()
+    }
     if (testStore.tests.length === 0) {
       $q.notify({
         type: 'warning',
@@ -249,7 +268,12 @@ onMounted(async () => {
     })
   } finally {
     loading.value = false
+    await typeset()
   }
+})
+
+watch([currentQuestion, selectedOption, showResult], async () => {
+  await typeset()
 })
 
 const goTo = (page) => router.push(`/${page}`)
@@ -272,10 +296,25 @@ const startTest = async (test) => {
       throw new Error('Teste não encontrado após carregamento')
     }
     console.log('Teste carregado:', currentTest.value)
+
+    // Inicializa travas com base no progresso anterior
+    locked.value = {}
+    if (progressData?.answeredQuestions?.length) {
+      for (const qId of progressData.answeredQuestions) {
+        locked.value[qId] = true
+      }
+    }
+
     if (progressData.completed) {
-      currentQuestionIndex.value = currentTest.value.questions.length - 1
-      score.value = progressData.score || 0
-      showResultDialog.value = true
+      // Se o teste foi concluído anteriormente, permitir repetir imediatamente.
+      await testStore.resetUserProgress(test.id)
+      answers.value = {}
+      locked.value = {}
+      currentQuestionIndex.value = 0
+      selectedOption.value = null
+      showResult.value = false
+      score.value = 0
+      $q.notify({ type: 'info', message: 'Teste reiniciado. Boa sorte!' })
     } else {
       const lastAnsweredIndex = Math.max(
         -1,
@@ -302,7 +341,29 @@ const startTest = async (test) => {
     loading.value = false
   }
 }
+const gotoQuestion = (newIndex) => {
+  if (!currentTest.value) return
+  if (newIndex < 0 || newIndex >= currentTest.value.questions.length) return
+  currentQuestionIndex.value = newIndex
+  const q = currentTest.value.questions[newIndex]
+  const qId = q?.id
+  if (!qId) return
+  // Se a questão está travada, apenas visualizar: mostrar resultado e travar seleção
+  if (locked.value[qId]) {
+    selectedOption.value = answers.value[qId] ?? null
+    showResult.value = true
+  } else {
+    selectedOption.value = answers.value[qId] ?? null
+    showResult.value = false
+  }
+}
+const prevQuestion = () => {
+  gotoQuestion(currentQuestionIndex.value - 1)
+}
 const selectOption = (index) => {
+  const qId = currentQuestion.value?.id
+  if (!qId) return
+  if (locked.value[qId]) return // não permitir alterar respostas já confirmadas
   if (!showResult.value) {
     selectedOption.value = index
   }
@@ -323,6 +384,10 @@ const submitAnswer = async () => {
       false,
       score.value
     )
+    // Trava a questão atual e memoriza a resposta escolhida
+    const qId = currentQuestion.value.id
+    locked.value[qId] = true
+    answers.value[qId] = selectedOption.value
   } catch (error) {
     $q.notify({
       type: 'negative',
@@ -334,9 +399,7 @@ const submitAnswer = async () => {
 }
 const nextQuestion = async () => {
   if (currentQuestionIndex.value < currentTest.value.questions.length - 1) {
-    currentQuestionIndex.value++
-    selectedOption.value = null
-    showResult.value = false
+    gotoQuestion(currentQuestionIndex.value + 1)
   } else {
     try {
       await testStore.saveUserProgress(
@@ -379,6 +442,8 @@ const endTest = async () => {
   selectedOption.value = null
   showResult.value = false
   showResultDialog.value = false
+  answers.value = {}
+  locked.value = {}
 }
 </script>
 

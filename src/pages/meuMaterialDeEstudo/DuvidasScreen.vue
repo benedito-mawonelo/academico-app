@@ -14,7 +14,6 @@
         <div class="section-header">
           <q-icon name="help" color="primary" size="md" class="q-mr-sm" />
           <h2 class="section-title">Histórico de Dúvidas</h2>
-          <q-btn round color="primary" icon="add" @click="createDoubt" />
         </div>
         <q-list class="doubts-list" v-if="doubts.length">
           <q-item
@@ -22,15 +21,15 @@
             :key="doubt.id"
             clickable
             v-ripple
-            @click="goToDoubt(doubt.id)"
+            @click="goToVideoFromDoubt(doubt)"
             class="doubt-item"
           >
             <q-item-section avatar>
               <q-icon name="chat" color="primary" />
             </q-item-section>
             <q-item-section>
-              <q-item-label class="doubt-question">{{ doubt.question }}</q-item-label>
-              <q-item-label caption>Vídeo: {{ doubt.videoTitle }}</q-item-label>
+              <q-item-label class="doubt-question">{{ doubt.texto }}</q-item-label>
+              <q-item-label caption>Vídeo: {{ videoTitles[doubt.videoId] || 'Vídeo' }}</q-item-label>
               <q-item-label caption>{{ formatDate(doubt.date) }}</q-item-label>
             </q-item-section>
             <q-item-section side>
@@ -59,9 +58,6 @@
         active-color="primary"
         indicator-color="primary"
       >
-        <q-tab name="videos" icon="ondemand_video" label="Vídeos" @click="goTo('videos')" />
-        <q-tab name="favorites" icon="favorite" label="Favoritos" @click="goTo('favorites')" />
-        <q-tab name="notes" icon="edit_note" label="Notas" @click="goTo('notes')" />
         <q-tab name="doubts" icon="help" label="Dúvidas" @click="goTo('doubts')" />
         <q-tab name="tests" icon="assignment" label="Testes" @click="goTo('tests')" />
       </q-tabs>
@@ -70,21 +66,60 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { getAuth } from 'firebase/auth'
+import { collection, getDocs, query, where, orderBy, doc, getDoc } from 'firebase/firestore'
+import { db } from 'boot/firebase'
 
 const router = useRouter()
 const activeTab = ref('doubts')
-
-const doubts = ref([
-  { id: 1, question: 'Como resolver equações quadráticas?', videoTitle: 'Matemática: Equações', date: new Date('2025-07-30'), resolved: false },
-  { id: 2, question: 'O que é energia cinética?', videoTitle: 'Física: Leis de Newton', date: new Date('2025-07-29'), resolved: true },
-])
+const doubts = ref([])
+const videoTitles = ref({})
 
 const goTo = (page) => router.push(`/${page}`)
-const goToDoubt = (id) => router.push(`/doubt/${id}`)
-const createDoubt = () => router.push('/doubt/new')
-const formatDate = (date) => date.toLocaleDateString('pt-BR')
+const formatDate = (date) => (date instanceof Date ? date.toLocaleDateString('pt-BR') : '')
+
+async function loadDoubts() {
+  const auth = getAuth()
+  const user = auth.currentUser
+  if (!user) return
+  // Carrega dúvidas do usuário atual
+  const q = query(collection(db, 'duvidas'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'))
+  const snap = await getDocs(q)
+  const items = snap.docs.map(d => {
+    const data = d.data()
+    const date = data.createdAt?.toDate ? data.createdAt.toDate() : new Date()
+    const resolvedComputed = !!(data.resolved || (Array.isArray(data.respostas) && data.respostas.length > 0))
+    return { id: d.id, ...data, date, resolved: resolvedComputed }
+  })
+  doubts.value = items
+  // Carrega títulos dos vídeos relacionados (em batches de 10)
+  const ids = [...new Set(items.map(i => i.videoId).filter(Boolean))]
+  const chunk = (arr, size) => arr.reduce((acc, _, i) => (i % size ? acc : [...acc, arr.slice(i, i + size)]), [])
+  const batches = chunk(ids, 10)
+  const map = {}
+  for (const batch of batches) {
+    // Firestore não permite 'in' com doc id direto sem campo; buscar individualmente por simplicidade
+    for (const vid of batch) {
+      const vref = doc(collection(db, 'videoaulas'), vid)
+      const vsnap = await getDoc(vref)
+      if (vsnap.exists()) {
+        map[vid] = vsnap.data().titulo || 'Vídeo'
+      }
+    }
+  }
+  videoTitles.value = map
+}
+
+function goToVideoFromDoubt(d) {
+  // Navega para o player do vídeo da dúvida
+  router.push({ path: '/video-player', query: { id: d.videoId } })
+}
+
+onMounted(async () => {
+  await loadDoubts()
+})
 </script>
 
 <style lang="scss" scoped>

@@ -9,13 +9,7 @@
         </div>
         <div v-else class="video-container shadow-4 rounded-borders q-mb-lg">
           <q-responsive :ratio="16/9">
-            <iframe
-              :src="embedUrl"
-              frameborder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-              allowfullscreen
-              class="full-width full-height"
-            ></iframe>
+            <div id="yt-player" class="full-width full-height"></div>
           </q-responsive>
         </div>
 
@@ -42,17 +36,15 @@
           <!-- Botões de ação -->
           <div class="action-buttons q-mb-xl">
             <q-btn
-              v-for="btn in actionButtons"
-              :key="btn.label"
               flat
               round
-              :icon="btn.icon"
-              :color="btn.color"
+              :icon="favoriteCurrent ? 'favorite' : 'favorite_border'"
+              color="red"
               size="md"
               class="q-mr-md"
-              @click="btn.action"
+              @click="toggleFavoriteCurrent"
             >
-              <q-tooltip class="bg-green text-white">{{ btn.label }}</q-tooltip>
+              <q-tooltip class="bg-green text-white">{{ favoriteCurrent ? 'Remover dos Favoritos' : 'Salvar nos Favoritos' }}</q-tooltip>
             </q-btn>
             <q-btn
               flat
@@ -70,7 +62,10 @@
             <!-- Input para nova dúvida -->
             <div class="comment-input q-mb-lg">
               <q-avatar size="40px" class="q-mr-md" v-if="user.isLoaded">
-                <img :src="user.avatar || 'https://ui-avatars.com/api/?name=' + user.name" />
+                <template v-if="user.avatar">
+                  <img :src="user.avatar" />
+                </template>
+                <q-icon v-else name="person" color="grey-6" />
               </q-avatar>
               <q-input
                 v-model="novaDuvida"
@@ -106,7 +101,10 @@
                 <q-card-section class="q-pa-md">
                   <div class="row items-start">
                     <q-avatar size="40px" class="q-mr-md">
-                      <img :src="duvida.userPhoto || `https://ui-avatars.com/api/?name=${duvida.userName}`" />
+                      <template v-if="duvida.userPhoto">
+                        <img :src="duvida.userPhoto" />
+                      </template>
+                      <q-icon v-else name="person" color="grey-6" />
                     </q-avatar>
                     <div class="comment-content flex-1">
                       <!-- Modo de edição para dúvida -->
@@ -177,7 +175,10 @@
                       <!-- Input para nova resposta à dúvida -->
                       <div v-if="respondendoDuvidaId === duvida.id && !respondendoRespostaId" class="response-input q-mt-md q-ml-lg">
                         <q-avatar size="32px" class="q-mr-md">
-                          <img :src="user.avatar || 'https://ui-avatars.com/api/?name=' + user.name" />
+                          <template v-if="user.avatar">
+                            <img :src="user.avatar" />
+                          </template>
+                          <q-icon v-else name="person" color="grey-6" />
                         </q-avatar>
                         <q-input
                           v-model="novaResposta"
@@ -208,7 +209,10 @@
                           class="response-item q-mb-sm"
                         >
                           <q-avatar size="32px" class="q-mr-md">
-                            <img :src="resposta.userPhoto || `https://ui-avatars.com/api/?name=${resposta.userName}`" />
+                            <template v-if="resposta.userPhoto">
+                              <img :src="resposta.userPhoto" />
+                            </template>
+                            <q-icon v-else name="person" color="grey-6" />
                           </q-avatar>
                           <div class="response-content flex-1">
                             <!-- Modo de edição para resposta -->
@@ -270,7 +274,10 @@
                             <!-- Input para nova resposta à resposta -->
                             <div v-if="respondendoDuvidaId === duvida.id && respondendoRespostaId === resposta.id" class="response-input q-mt-sm q-ml-md">
                               <q-avatar size="28px" class="q-mr-md">
-                                <img :src="user.avatar || 'https://ui-avatars.com/api/?name=' + user.name" />
+                                <template v-if="user.avatar">
+                                  <img :src="user.avatar" />
+                                </template>
+                                <q-icon v-else name="person" color="grey-6" />
                               </q-avatar>
                               <q-input
                                 v-model="novaResposta"
@@ -301,7 +308,10 @@
                                 class="response-item q-mb-sm"
                               >
                                 <q-avatar size="28px" class="q-mr-md">
-                                  <img :src="nestedResposta.userPhoto || `https://ui-avatars.com/api/?name=${nestedResposta.userName}`" />
+                                  <template v-if="nestedResposta.userPhoto">
+                                    <img :src="nestedResposta.userPhoto" />
+                                  </template>
+                                  <q-icon v-else name="person" color="grey-6" />
                                 </q-avatar>
                                 <div class="response-content">
                                   <div class="text-subtitle2 text-weight-bold text-green">{{ nestedResposta.userName }}</div>
@@ -357,10 +367,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getAuth, onAuthStateChanged } from 'firebase/auth'
-import { collection, getDocs, query, orderBy, where, addDoc, doc, getDoc, updateDoc, arrayUnion } from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, where, addDoc, doc, getDoc, updateDoc, arrayUnion, setDoc, deleteDoc } from 'firebase/firestore'
 import { db } from 'boot/firebase'
 import { useQuasar } from 'quasar'
 
@@ -381,6 +391,12 @@ const video = ref({
 const novaDuvida = ref('')
 const duvidas = ref([])
 const relacionados = ref([])
+const progressSaved = ref(false)
+const playlist = ref([])
+const favoriteCurrent = ref(false)
+const currentIndex = ref(0)
+const player = ref(null)
+const apiReady = ref(false)
 const user = ref({
   name: '',
   apelido: '',
@@ -398,22 +414,31 @@ const respondendoRespostaId = ref(null)
 const editingDuvidaId = ref(null)
 const editingRespostaId = ref(null)
 const editDuvidaTexto = ref('')
+
+async function marcarComoAssistido(uid) {
+  try {
+    if (!video.value.id) return
+    const docId = `${uid}_${video.value.id}`
+    const ref = doc(db, 'playHistory', docId)
+    await setDoc(ref, {
+      userId: uid,
+      videoId: video.value.id,
+      temaId: video.value.temaId || null,
+      watched: true,
+      watchedAt: new Date()
+    }, { merge: true })
+    progressSaved.value = true
+  } catch (e) {
+    console.error('Erro ao salvar progresso de vídeo:', e)
+  }
+}
 const editRespostaTexto = ref('')
 const saving = ref(false)
 const loading = ref(false)
 const collapsed = ref({})
 
-const embedUrl = computed(() => {
-  const videoId = getVideoId(video.value.url)
-  return `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`
-})
+// Usaremos o YouTube Iframe API; embedUrl não é necessário quando o player é criado via API
 
-const actionButtons = [
-  { icon: 'bookmark', color: 'grey-7', label: 'Salvar', action: () => alert('Salvar vídeo') },
-  { icon: 'share', color: 'grey-7', label: 'Compartilhar', action: () => alert('Compartilhar vídeo') },
-  { icon: 'download', color: 'grey-7', label: 'Download', action: () => alert('Download vídeo') },
-  { icon: 'playlist_add', color: 'grey-7', label: 'Adicionar à lista', action: () => alert('Adicionar à lista') }
-]
 
 async function loadUserData(authUser) {
   if (authUser) {
@@ -426,7 +451,7 @@ async function loadUserData(authUser) {
         apelido: data.apelido || '',
         instituicao: data.instituicao || '',
         curso: data.curso || '',
-        avatar: data.image || authUser.photoURL || 'https://randomuser.me/api/portraits/men/32.jpg',
+        avatar: data.image || authUser.photoURL || '',
         provincia: data.provincia || '',
         telefone: data.telefone || '',
         email: data.email || authUser.email || '',
@@ -580,6 +605,7 @@ async function adicionarDuvida() {
       userPhoto: user.value.avatar || null,
       texto: novaDuvida.value.trim(),
       createdAt: new Date(),
+      resolved: false,
       respostas: []
     })
     duvidas.value.unshift({
@@ -645,6 +671,10 @@ async function adicionarResposta(duvidaId, parentRespostaId) {
       if (respostaIndex !== -1) {
         const updateObj = {}
         updateObj[`respostas.${respostaIndex}.respostas`] = arrayUnion(resposta)
+        updateObj.resolved = true
+        updateObj.answeredAt = new Date()
+        updateObj.answeredById = auth.currentUser.uid
+        updateObj.answeredByName = capitalizeWords(`${user.value.name} ${user.value.apelido}`.trim()) || 'Anônimo'
         await updateDoc(duvidaRef, updateObj)
 
         if (!duvidas.value[duvidaIndex].respostas[respostaIndex].respostas) {
@@ -658,7 +688,11 @@ async function adicionarResposta(duvidaId, parentRespostaId) {
     } else {
       // Adicionar resposta direta à dúvida
       await updateDoc(duvidaRef, {
-        respostas: arrayUnion(resposta)
+        respostas: arrayUnion(resposta),
+        resolved: true,
+        answeredAt: new Date(),
+        answeredById: auth.currentUser.uid,
+        answeredByName: capitalizeWords(`${user.value.name} ${user.value.apelido}`.trim()) || 'Anônimo'
       })
 
       if (!duvidas.value[duvidaIndex].respostas) {
@@ -817,6 +851,32 @@ function cancelarEdicaoResposta() {
   editRespostaTexto.value = ''
 }
 
+async function buildPlaylist() {
+  try {
+    // Se houver temaId, montar playlist pelos vídeos do tema
+    if (video.value.temaId) {
+      const qSnap = await getDocs(query(collection(db, 'videoaulas'), where('temaId', '==', video.value.temaId)))
+      const items = qSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+      // Ordena por 'ordem' se existir, senão por titulo
+      items.sort((a, b) => (a.ordem ?? 9999) - (b.ordem ?? 9999) || String(a.titulo||'').localeCompare(String(b.titulo||'')))
+      playlist.value = items
+      relacionados.value = items
+      const idx = items.findIndex(v => v.id === video.value.id)
+      currentIndex.value = idx >= 0 ? idx : 0
+    } else {
+      // Sem temaId: usar apenas o vídeo atual
+      playlist.value = [{ ...video.value }]
+      relacionados.value = playlist.value
+      currentIndex.value = 0
+    }
+  } catch (e) {
+    console.error('Erro ao montar playlist:', e)
+    playlist.value = [{ ...video.value }]
+    relacionados.value = playlist.value
+    currentIndex.value = 0
+  }
+}
+
 function getVideoId(url) {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
   const match = url.match(regExp)
@@ -842,18 +902,47 @@ function capitalizeWords(text) {
 }
 
 function playOutro(videoSelecionado) {
-  router.replace({
-    path: '/video-player',
-    query: {
-      id: videoSelecionado.id,
-      titulo: videoSelecionado.titulo,
-      descricao: videoSelecionado.descricao,
-      url: videoSelecionado.url,
-      temaId: videoSelecionado.temaId,
-      duracao: videoSelecionado.duracao,
-      createdAt: videoSelecionado.createdAt.toISOString()
-    }
-  })
+  const idx = playlist.value.findIndex(v => v.id === videoSelecionado.id)
+  if (idx >= 0) {
+    playAt(idx)
+  }
+}
+
+async function checkFavorite(uid, vid) {
+  try {
+    const favRef = doc(db, 'userFavorites', `${uid}_${vid}`)
+    const favSnap = await getDoc(favRef)
+    favoriteCurrent.value = favSnap.exists()
+  } catch {
+    favoriteCurrent.value = false
+  }
+}
+
+async function toggleFavoriteCurrent() {
+  const u = auth.currentUser
+  if (!u) {
+    $q.notify({ type: 'warning', message: 'Faça login para favoritar' })
+    return
+  }
+  const favRef = doc(db, 'userFavorites', `${u.uid}_${video.value.id}`)
+  if (favoriteCurrent.value) {
+    await deleteDoc(favRef)
+    favoriteCurrent.value = false
+    $q.notify({ type: 'info', message: 'Removido dos favoritos' })
+  } else {
+    await setDoc(favRef, {
+      userId: u.uid,
+      videoId: video.value.id,
+      titulo: video.value.titulo,
+      descricao: video.value.descricao,
+      url: video.value.url,
+      temaId: video.value.temaId || null,
+      duracao: video.value.duracao || 0,
+      createdAt: new Date()
+    }, { merge: true })
+    favoriteCurrent.value = true
+    $q.notify({ type: 'positive', message: 'Adicionado aos favoritos' })
+  }
 }
 
 function likeVideo() {
@@ -868,8 +957,89 @@ onMounted(async () => {
   onAuthStateChanged(auth, async (authUser) => {
     await loadUserData(authUser)
     await loadVideoData()
+    await buildPlaylist()
+    await ensureYT()
+    initPlayer()
+    if (authUser) {
+      await marcarComoAssistido(authUser.uid)
+      await checkFavorite(authUser.uid, video.value.id)
+    }
   })
 })
+
+function ensureYT() {
+  return new Promise((resolve) => {
+    if (window.YT && window.YT.Player) {
+      apiReady.value = true
+      return resolve(true)
+    }
+    const tag = document.createElement('script')
+    tag.src = 'https://www.youtube.com/iframe_api'
+    const firstScriptTag = document.getElementsByTagName('script')[0]
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag)
+    window.onYouTubeIframeAPIReady = () => {
+      apiReady.value = true
+      resolve(true)
+    }
+  })
+}
+
+function initPlayer() {
+  if (!apiReady.value) return
+  player.value = new window.YT.Player('yt-player', {
+    height: '390',
+    width: '640',
+    playerVars: {
+      rel: 0,
+      autoplay: 1,
+      controls: 1,
+      modestbranding: 1
+    },
+    events: {
+      onReady: onPlayerReady,
+      onStateChange: onStateChange
+    }
+  })
+}
+
+function onPlayerReady() {
+  const ids = playlist.value.map(v => getVideoId(v.url))
+  if (ids.length) {
+    player.value.cuePlaylist(ids, currentIndex.value)
+    player.value.playVideoAt(currentIndex.value)
+  }
+}
+
+async function onStateChange(event) {
+  if (event.data === window.YT.PlayerState.ENDED) {
+    const next = currentIndex.value + 1
+    if (next < playlist.value.length) {
+      await playAt(next)
+    }
+  }
+}
+
+async function playAt(index) {
+  currentIndex.value = index
+  const item = playlist.value[index]
+  if (!item) return
+  player.value.playVideoAt(index)
+  // Atualiza detalhes no painel
+  video.value = {
+    id: item.id,
+    titulo: item.titulo,
+    descricao: item.descricao,
+    url: item.url,
+    temaId: item.temaId,
+    duracao: item.duracao,
+    createdAt: item.createdAt?.toDate ? item.createdAt.toDate() : new Date()
+  }
+  const u = auth.currentUser
+  if (u) {
+    await marcarComoAssistido(u.uid)
+    await checkFavorite(u.uid, item.id)
+  }
+}
 </script>
 
 <style lang="scss" scoped>

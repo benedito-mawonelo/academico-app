@@ -5,7 +5,10 @@
       <div class="header-content">
         <div class="user-profile" @click="goTo('profile')">
           <q-avatar size="52px" class="profile-avatar glow-on-hover">
-            <img :src="user.avatar || 'https://randomuser.me/api/portraits/men/47.jpg'">
+            <template v-if="user.avatar">
+              <img :src="user.avatar">
+            </template>
+            <q-icon v-else name="person" color="white" />
           </q-avatar>
           <div class="user-info">
             <div class="user-name">
@@ -128,90 +131,26 @@
             </q-menu>
           </div>
 
-          <!-- Botão de Menu com Ícone Animado -->
+          <!-- Botão de Logout no lugar do menu -->
           <q-btn
             flat
             round
-            :icon="showMenu ? 'close' : 'menu'"
+            icon="logout"
             color="grey-8"
             class="action-btn"
-            @click="toggleMenu"
-          >
-            <q-menu
-              v-model="showMenu"
-              anchor="bottom right"
-              self="top right"
-              class="menu-dropdown shadow-5"
-              transition-show="jump-down"
-              transition-hide="jump-up"
-            >
-              <q-list style="min-width: 250px" class="menu-list">
-                <q-item-label header class="text-weight-bold text-primary">
-                  <q-icon name="person" class="q-mr-sm" />
-                  {{ user.name || 'Usuário' }}
-                </q-item-label>
+            @click="showLogoutConfirm = true"
+          />
 
-                <q-item clickable v-ripple class="menu-item" @click="goTo('profile')">
-                  <q-item-section avatar>
-                    <q-icon name="person" color="primary" />
-                  </q-item-section>
-                  <q-item-section>Meu Perfil</q-item-section>
-                  <q-item-section side>
-                    <q-icon name="chevron_right" color="grey-5" />
-                  </q-item-section>
-                </q-item>
-
-                <q-item clickable v-ripple class="menu-item" @click="goTo('settings')">
-                  <q-item-section avatar>
-                    <q-icon name="settings" color="primary" />
-                  </q-item-section>
-                  <q-item-section>Configurações</q-item-section>
-                  <q-item-section side>
-                    <q-icon name="chevron_right" color="grey-5" />
-                  </q-item-section>
-                </q-item>
-
-                <q-item clickable v-ripple class="menu-item" @click="goTo('Cadeiras')">
-                  <q-item-section avatar>
-                    <q-icon name="school" color="primary" />
-                  </q-item-section>
-                  <q-item-section>Minhas Cadeiras</q-item-section>
-                  <q-item-section side>
-                    <q-icon name="chevron_right" color="grey-5" />
-                  </q-item-section>
-                </q-item>
-
-                <q-item clickable v-ripple class="menu-item" @click="goTo('ebooks')">
-                  <q-item-section avatar>
-                    <q-icon name="menu_book" color="primary" />
-                  </q-item-section>
-                  <q-item-section>Livros Digitais</q-item-section>
-                  <q-item-section side>
-                    <q-icon name="chevron_right" color="grey-5" />
-                  </q-item-section>
-                </q-item>
-
-                <q-item clickable v-ripple class="menu-item" @click="goTo('loja-academica')">
-                  <q-item-section avatar>
-                    <q-icon name="shopping_cart" color="primary" />
-                  </q-item-section>
-                  <q-item-section>Loja Acadêmica</q-item-section>
-                  <q-item-section side>
-                    <q-icon name="chevron_right" color="grey-5" />
-                  </q-item-section>
-                </q-item>
-
-                <q-separator class="q-my-sm" />
-
-                <q-item clickable v-ripple class="menu-item text-negative" @click="logout">
-                  <q-item-section avatar>
-                    <q-icon name="logout" color="negative" />
-                  </q-item-section>
-                  <q-item-section>Sair</q-item-section>
-                </q-item>
-              </q-list>
-            </q-menu>
-          </q-btn>
+          <q-dialog v-model="showLogoutConfirm" persistent>
+            <q-card>
+              <q-card-section class="text-h6">Confirmar saída</q-card-section>
+              <q-card-section>Tem certeza que deseja sair?</q-card-section>
+              <q-card-actions align="right">
+                <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
+                <q-btn color="negative" label="Sair" @click="doLogout" />
+              </q-card-actions>
+            </q-card>
+          </q-dialog>
         </div>
       </div>
     </header>
@@ -378,7 +317,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import DashboardCard from 'components/dashboard/DashboardCard.vue'
 import { onAuthStateChanged } from 'firebase/auth'
-import { doc, getDoc } from 'firebase/firestore'
+import { collection, onSnapshot, query, where, orderBy, updateDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore'
 import { firebaseAuth, db } from 'boot/firebase'
 
 const router = useRouter()
@@ -386,7 +325,7 @@ const router = useRouter()
 const user = ref({
   name: '',
   isPro: true,
-  avatar: 'https://randomuser.me/api/portraits/women/45.jpg'
+  avatar: ''
 })
 
 onMounted(() => {
@@ -402,7 +341,7 @@ onMounted(() => {
           apelido: data.apelido || '',
           instituicao: data.instituicao || '',
           curso: data.curso || '',
-          avatar: data.image || 'https://randomuser.me/api/portraits/men/47.jpg',
+          avatar: data.image || '',
           provincia: data.provincia || '',
           telefone: data.telefone || '',
           email: data.email || '',
@@ -411,6 +350,26 @@ onMounted(() => {
       } else {
         console.error('Documento do usuário não encontrado.')
       }
+
+      // Subscrever notificações em tempo real
+      if (unsubNotifications) unsubNotifications()
+      const qn = query(
+        collection(db, 'notifications'),
+        where('userId', '==', authUser.uid),
+        orderBy('createdAt', 'desc')
+      )
+      unsubNotifications = onSnapshot(qn, (snap) => {
+        notifications.value = snap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+          time: d.data().createdAt?.toDate ? d.data().createdAt.toDate() : new Date(),
+          read: !!d.data().read
+        }))
+      })
+    } else {
+      notifications.value = []
+      if (unsubNotifications) unsubNotifications()
+      unsubNotifications = null
     }
   })
 })
@@ -425,55 +384,21 @@ function capitalizeWords(text) {
 }
 
 const showNotifications = ref(false)
-const showMenu = ref(false)
 
-const notifications = ref([
-  {
-    id: 1,
-    title: 'Novo eBook disponível',
-    message: 'O manual de Matemática Avançada foi adicionado à sua biblioteca',
-    icon: 'menu_book',
-    color: 'primary',
-    time: new Date(Date.now() - 1000 * 60 * 5), // 5 minutos atrás
-    read: false
-  },
-  {
-    id: 2,
-    title: 'Avaliação pendente',
-    message: 'Você tem uma avaliação de Física para completar até sexta-feira',
-    icon: 'assignment',
-    color: 'orange',
-    time: new Date(Date.now() - 1000 * 60 * 60), // 1 hora atrás
-    read: false
-  },
-  {
-    id: 3,
-    title: 'Mensagem do professor',
-    message: 'O professor Carlos enviou um feedback sobre seu último trabalho',
-    icon: 'email',
-    color: 'teal',
-    time: new Date(Date.now() - 1000 * 60 * 60 * 3), // 3 horas atrás
-    read: true
-  },
-  {
-    id: 4,
-    title: 'Atualização do sistema',
-    message: 'Nova versão do aplicativo disponível com melhorias de performance',
-    icon: 'system_update',
-    color: 'purple',
-    time: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 dia atrás
-    read: true
-  },
-  {
-    id: 5,
-    title: 'Novo curso disponível',
-    message: 'Curso de Inteligência Artificial foi liberado para sua conta PRO',
-    icon: 'school',
-    color: 'red',
-    time: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 horas atrás
-    read: false
+const notifications = ref([])
+let unsubNotifications = null
+const showLogoutConfirm = ref(false)
+
+function doLogout () {
+  try {
+    firebaseAuth.signOut()
+    router.push('/login')
+  } catch (e) {
+    console.error(e)
+  } finally {
+    showLogoutConfirm.value = false
   }
-])
+}
 
 const unreadNotifications = computed(() => {
   return notifications.value.filter(n => !n.read)
@@ -481,56 +406,14 @@ const unreadNotifications = computed(() => {
 
 const cards = ref([
   {
-    label: 'Encontrar explicação em vídeos',
+    label: 'Encontrar Explicações em Vídeo',
     icon: 'ondemand_video',
     color: 'primary',
     gradient: 'linear-gradient(135deg, #1976D2 0%, #2196F3 100%)',
-    route: 'Cadeiras'
+    route: 'cadeiras'
   },
   {
-    label: 'Livros Digitais',
-    icon: 'menu_book',
-    color: 'secondary',
-    gradient: 'linear-gradient(135deg, #9C27B0 0%, #E91E63 100%)',
-    route: 'ebooks'
-  },
-  {
-    label: 'Cursos com certificado',
-    icon: 'workspace_premium',
-    color: 'deep-orange',
-    gradient: 'linear-gradient(135deg, #FF5722 0%, #FF9800 100%)',
-    route: 'cursos'
-  },
-  {
-    label: 'Minha Biblioteca',
-    icon: 'cloud_upload',
-    color: 'teal',
-    gradient: 'linear-gradient(135deg, #009688 0%, #4CAF50 100%)',
-    route: 'uploads'
-  },
-  {
-    label: 'Scanner de Documentos',
-    icon: 'qr_code_scanner',
-    color: 'indigo',
-    gradient: 'linear-gradient(135deg, #3F51B5 0%, #2196F3 100%)',
-    route: 'scanner'
-  },
-  // {
-  //   label: 'Banco de Exames',
-  //   icon: 'assignment',
-  //   color: 'purple',
-  //   gradient: 'linear-gradient(135deg, #673AB7 0%, #9C27B0 100%)',
-  //   route: 'exames'
-  // },
-  // {
-  //   label: 'Anotações Pessoais',
-  //   icon: 'edit_note',
-  //   color: 'green',
-  //   gradient: 'linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%)',
-  //   route: 'anotacoes'
-  // },
-  {
-    label: 'Meu material de estudo',
+    label: 'Meu Material de Estudo',
     icon: 'folder_special',
     color: 'cyan',
     gradient: 'linear-gradient(135deg, #00BCD4 0%, #4DD0E1 100%)',
@@ -544,33 +427,49 @@ const cards = ref([
     route: 'forum'
   },
   {
-    label: 'Minha Agenda',
-    icon: 'calendar_today',
-    color: 'pink',
-    gradient: 'linear-gradient(135deg, #E91E63 0%, #F06292 100%)',
-    route: 'calendario'
+    label: 'Dúvidas',
+    icon: 'help',
+    color: 'orange',
+    gradient: 'linear-gradient(135deg, #FF9800 0%, #FFC107 100%)',
+    route: 'doubts'
   }
 ])
 
-function toggleNotifications() {
+async function toggleNotifications() {
   showNotifications.value = !showNotifications.value
-  // Marcar como lido quando abre
+  // Marcar como lidas no Firestore quando abrir
   if (showNotifications.value) {
-    notifications.value.forEach(n => n.read = true)
-     console.log('toggleNotifications chamado. showNotifications:', showNotifications.value)
-
+    const unread = notifications.value.filter(n => !n.read)
+    for (const n of unread) {
+      try {
+        await updateDoc(doc(db, 'notifications', n.id), {
+          read: true,
+          readAt: serverTimestamp()
+        })
+      } catch (e) {
+        console.error('Erro ao marcar notificação como lida:', e)
+      }
+    }
   }
 }
 
-function toggleMenu() {
-  showMenu.value = !showMenu.value
-}
-
-function handleNotificationClick(notification) {
-  if (!notification.read) {
-    notification.read = true
+async function handleNotificationClick(n) {
+  try {
+    if (!n.read) {
+      await updateDoc(doc(db, 'notifications', n.id), { read: true, readAt: serverTimestamp() })
+      n.read = true
+    }
+    if (n.linkPath) {
+      router.push({ path: n.linkPath, query: n.linkQuery || {} })
+      return
+    }
+    if (n.videoId) {
+      router.push({ path: '/video-player', query: { id: n.videoId } })
+      return
+    }
+  } catch (e) {
+    console.error('Erro ao abrir notificação:', e)
   }
-  // Aqui você pode adicionar lógica para redirecionar com base no tipo de notificação
 }
 
 function formatTime(date) {

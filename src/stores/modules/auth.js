@@ -1,8 +1,7 @@
 import { defineStore } from 'pinia'
 import { firebaseAuth, db } from 'boot/firebase'
-import { signInWithEmailAndPassword } from 'firebase/auth'
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, setPersistence, browserSessionPersistence } from 'firebase/auth'
 import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore'
-import { createUserWithEmailAndPassword } from 'firebase/auth' // certifique-se de importar
 
 
 
@@ -14,6 +13,8 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async login(email, password) {
       try {
+        // Isola a sessão por aba (não compartilha entre tabs)
+        await setPersistence(firebaseAuth, browserSessionPersistence)
         const result = await signInWithEmailAndPassword(firebaseAuth, email, password)
         this.user = result.user
 
@@ -89,7 +90,8 @@ export const useAuthStore = defineStore('auth', {
       const { email, password, ...userData } = payload
 
       try {
-        // 1. Criar no Firebase Auth
+        // 1. Criar no Firebase Auth (sessão por aba)
+        await setPersistence(firebaseAuth, browserSessionPersistence)
         const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password)
         const user = userCredential.user
         this.user = user
@@ -103,6 +105,8 @@ export const useAuthStore = defineStore('auth', {
           // email_fake: userData.email_fake || '',
           uid,
           password: password,
+          role: userData.role || 'student',
+          isAdmin: userData.isAdmin === true,
           createdAt: new Date().toISOString()
         })
 
@@ -113,6 +117,30 @@ export const useAuthStore = defineStore('auth', {
         console.error('Erro ao registrar usuário:', error)
         throw error
       }
+    },
+
+    // Helper para criar professor diretamente
+    async registerProfessor(payload) {
+      const { email, password, ...userData } = payload
+      return await this.registerUser({
+        ...userData,
+        email,
+        password,
+        role: 'professor',
+        isAdmin: false
+      })
+    },
+
+    // Helper para criar administrador diretamente
+    async registerAdmin(payload) {
+      const { email, password, ...userData } = payload
+      return await this.registerUser({
+        ...userData,
+        email,
+        password,
+        role: 'admin',
+        isAdmin: true
+      })
     }
 
 

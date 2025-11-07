@@ -5,6 +5,9 @@ const routes = [
     children: [
       // Admin Painel
       { path: 'admin', component: () => import('pages/admin/adminPainel.vue') },
+      { path: 'admin/create-professor', component: () => import('pages/admin/CreateProfessor.vue') },
+      { path: 'admin/create-admin', component: () => import('pages/admin/CreateAdmin.vue') },
+      { path: 'professor', component: () => import('src/pages/professor/ProfessorPainel.vue') },
 
 
       // Páginas principais
@@ -26,6 +29,7 @@ const routes = [
       // Páginas acadêmicas
       { path: 'cadeiras', component: () => import('pages/DisciplinePage.vue') },
       { path: 'cadeiras/:id', component: () => import('pages/CadeiraView.vue') },
+      { path: 'cadeiras/:id/tests', component: () => import('pages/meuMaterialDeEstudo/TestsScreen.vue') },
       { path: '/cadeiras/:cadeiraId/modulos/:moduloId', component:() => import('pages/ModuloDetailPage.vue')},
       { path: 'ebooks', component: () => import('pages/EbooksPage.vue') },
       { path: 'meu-material', component: () => import('src/pages/meuMaterialDeEstudo/MeuMaterialDeEstudo.vue') },
@@ -44,6 +48,11 @@ const routes = [
       { path: 'notes', component: () => import('pages/meuMaterialDeEstudo/AnotacoesScreen.vue') },
       { path: 'doubts', component: () => import('pages/meuMaterialDeEstudo/DuvidasScreen.vue') },
       { path: 'tests', component: () => import('pages/meuMaterialDeEstudo/TestsScreen.vue') },
+      
+      // Rotas do Fórum de Discussões
+      { path: 'forum', component: () => import('pages/ForumPage.vue') },
+      { path: 'forum/live/:classId', component: () => import('pages/LiveClassRoom.vue') },
+      
       // Rotas para páginas de detalhes
       // { path: 'video/:id', component: () => import('pages/meuMaterialDeEstudo/VideoDetail.vue') },
       // { path: 'note/:id', component: () => import('pages/meuMaterialDeEstudo/NoteDetail.vue') },

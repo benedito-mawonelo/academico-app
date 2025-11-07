@@ -43,6 +43,50 @@ export const useTestStore = defineStore('test', {
       }
     },
 
+    async loadTestsByCadeira(cadeiraId) {
+      this.loading = true
+      this.tests = []
+      try {
+        // 1) Buscar módulos dessa cadeira
+        const modulosSnap = await getDocs(query(collection(db, 'modulos'), where('cadeiraId', '==', cadeiraId)))
+        const moduloIds = modulosSnap.docs.map(d => d.id)
+
+        if (moduloIds.length === 0) {
+          this.tests = []
+          return
+        }
+
+        // 2) Buscar temas por moduloId em batches de até 10 (limite do 'in')
+        const chunk = (arr, size) => arr.reduce((acc, _, i) => (i % size ? acc : [...acc, arr.slice(i, i + size)]), [])
+        const batches = chunk(moduloIds, 10)
+        const temas = []
+        for (const ids of batches) {
+          const temasSnap = await getDocs(query(collection(db, 'temas'), where('moduloId', 'in', ids)))
+          temas.push(...temasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+        }
+
+        // 3) Montar tests por tema
+        this.tests = await Promise.all(
+          temas.map(async (tema) => {
+            const progressData = await this.loadUserProgress(tema.id)
+            return {
+              id: tema.id,
+              title: tema.nome || `Teste ${tema.id}`,
+              progress: progressData.progress || 0,
+              completed: progressData.completed || false,
+              duration: tema.duration || 30,
+              questions: [],
+            }
+          })
+        )
+      } catch (error) {
+        console.error('Erro ao carregar testes por cadeira:', error)
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
     async loadTestQuestions(testId) {
       this.loading = true
       console.log(`Iniciando carregamento de perguntas para o testId: ${testId}`)
@@ -144,6 +188,33 @@ export const useTestStore = defineStore('test', {
         }
       } catch (error) {
         console.error('Erro ao salvar progresso do usuário:', error)
+        throw error
+      }
+    },
+
+    async resetUserProgress(testId) {
+      const user = firebaseAuth.currentUser
+      if (!user) {
+        console.warn('Nenhum usuário autenticado para resetar progresso')
+        return
+      }
+      try {
+        const progressDocRef = doc(db, 'progresso_usuario', `${user.uid}_${testId}`)
+        await setDoc(progressDocRef, {
+          userId: user.uid,
+          testId,
+          answeredQuestions: [],
+          completed: false,
+          score: 0,
+          lastUpdated: new Date(),
+        }, { merge: true })
+        const test = this.tests.find(t => t.id === testId)
+        if (test) {
+          test.progress = 0
+          test.completed = false
+        }
+      } catch (error) {
+        console.error('Erro ao resetar progresso do usuário:', error)
         throw error
       }
     },

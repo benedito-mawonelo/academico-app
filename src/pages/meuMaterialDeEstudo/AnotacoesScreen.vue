@@ -42,8 +42,6 @@
         <q-tab name="videos" icon="ondemand_video" label="Vídeos" @click="goTo('videos')" />
         <q-tab name="favorites" icon="favorite" label="Favoritos" @click="goTo('favorites')" />
         <q-tab name="notes" icon="edit_note" label="Notas" @click="goTo('notes')" />
-        <q-tab name="doubts" icon="help" label="Dúvidas" @click="goTo('doubts')" />
-        <q-tab name="tests" icon="assignment" label="Testes" @click="goTo('tests')" />
       </q-tabs>
     </q-footer>
   </div>

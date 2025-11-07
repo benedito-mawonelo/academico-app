@@ -24,7 +24,7 @@
         <div class="hero-content">
           <h1 class="hero-title">
             <span class="hero-highlight">Organize seus estudos</span>
-            <span class="hero-subtitle">Acesse vídeos, notas e testes em um só lugar</span>
+            <span class="hero-subtitle">Acesse vídeos e notas em um só lugar</span>
           </h1>
         </div>
       </div>
@@ -82,50 +82,6 @@
           </div>
         </div>
 
-        <!-- Seção de Dúvidas -->
-        <div class="section-header">
-          <q-icon name="help" color="primary" size="md" class="q-mr-sm" />
-          <h2 class="section-title">Suas Dúvidas</h2>
-        </div>
-        <q-list class="doubts-list">
-          <q-item
-            v-for="doubt in doubts"
-            :key="doubt.id"
-            clickable
-            v-ripple
-            @click="goToDoubt(doubt.id)"
-          >
-            <q-item-section avatar>
-              <q-icon name="chat" color="primary" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>{{ doubt.question }}</q-item-label>
-              <q-item-label caption>{{ doubt.videoTitle }}</q-item-label>
-            </q-item-section>
-          </q-item>
-        </q-list>
-
-        <!-- Seção de Testes Práticos -->
-        <div class="section-header">
-          <q-icon name="assignment" color="primary" size="md" class="q-mr-sm" />
-          <h2 class="section-title">Testes Práticos</h2>
-        </div>
-        <div class="tests-grid">
-          <div
-            v-for="test in tests"
-            :key="test.id"
-            class="test-card"
-            @click="goToTest(test.id)"
-          >
-            <div class="test-title">{{ test.title }}</div>
-            <q-progress
-              :percentage="test.progress"
-              color="primary"
-              height="4px"
-              class="q-mt-sm"
-            />
-          </div>
-        </div>
       </div>
     </q-page>
 
@@ -141,8 +97,6 @@
         <q-tab name="videos" icon="ondemand_video" label="Vídeos" @click="goTo('videos')" />
         <q-tab name="favorites" icon="favorite" label="Favoritos" @click="goTo('favorites')" />
         <q-tab name="notes" icon="edit_note" label="Notas" @click="goTo('notes')" />
-        <q-tab name="doubts" icon="help" label="Dúvidas" @click="goTo('doubts')" />
-        <q-tab name="tests" icon="assignment" label="Testes" @click="goTo('tests')" />
       </q-tabs>
     </q-footer>
   </div>
@@ -166,21 +120,11 @@ const notes = ref([
   { id: 1, title: 'Resumo de Cálculo', content: 'Derivadas e integrais...' },
   { id: 2, title: 'Fórmulas de Física', content: 'Leis de Newton...' },
 ])
-const doubts = ref([
-  { id: 1, question: 'Como resolver equações quadráticas?', videoTitle: 'Matemática: Equações' },
-  { id: 2, question: 'O que é energia cinética?', videoTitle: 'Física: Movimento' },
-])
-const tests = ref([
-  { id: 1, title: 'Teste de Matemática', progress: 75 },
-  { id: 2, title: 'Teste de Física', progress: 20 },
-])
 
 // Funções de navegação
 const goTo = (page) => router.push(`/${page}`)
 const goToVideo = (id) => router.push(`/video/${id}`)
 const goToNote = (id) => router.push(`/note/${id}`)
-const goToDoubt = (id) => router.push(`/doubt/${id}`)
-const goToTest = (id) => router.push(`/test/${id}`)
 const toggleFavorite = (id) => {
   const video = videos.value.find(v => v.id === id)
   if (video) video.isFavorite = !video.isFavorite

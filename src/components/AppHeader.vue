@@ -3,7 +3,10 @@
     <div class="header-content">
       <div class="user-profile" @click="$emit('navigate', 'profile')">
         <q-avatar size="56px" class="profile-avatar glow-on-hover">
-          <img :src="user.avatar || 'https://randomuser.me/api/portraits/women/45.jpg'">
+          <template v-if="user.avatar">
+            <img :src="user.avatar">
+          </template>
+          <q-icon v-else name="person" color="white" />
         </q-avatar>
         <div class="user-info">
           <div class="user-name">
@@ -69,85 +72,26 @@
           </q-menu>
         </div>
         <q-btn
-  flat
-  round
-  :icon="showMenu ? 'close' : 'menu'"
-  color="white"
-  class="action-btn"
-  @click="toggleMenu"
-  ref="menuAnchor"
-/>
+          flat
+          round
+          icon="logout"
+          color="white"
+          class="action-btn"
+          @click="showLogoutConfirm = true"
+        >
+          <q-tooltip>Sair</q-tooltip>
+        </q-btn>
 
-
-<q-menu
-  v-model="showMenu"
-  :target="menuAnchor"
-  anchor="bottom right"
-  self="top right"
-  transition-show="fade"
-  transition-hide="fade"
-  @before-show="showMenu = true"
-  @hide="showMenu = false"
->
-            <q-list style="min-width: 250px" class="menu-list">
-              <q-item-label header class="text-weight-bold text-green">
-                <q-icon name="person" class="q-mr-sm" /> {{ user.name || 'Usuário' }}
-              </q-item-label>
-              <q-item clickable v-ripple class="menu-item" @click="$emit('navigate', 'profile')">
-                <q-item-section avatar>
-                  <q-icon name="person" color="green" />
-                </q-item-section>
-                <q-item-section>Meu Perfil</q-item-section>
-                <q-item-section side>
-                  <q-icon name="chevron_right" color="grey-5" />
-                </q-item-section>
-              </q-item>
-              <q-item clickable v-ripple class="menu-item" @click="$emit('navigate', 'settings')">
-                <q-item-section avatar>
-                  <q-icon name="settings" color="green" />
-                </q-item-section>
-                <q-item-section>Configurações</q-item-section>
-                <q-item-section side>
-                  <q-icon name="chevron_right" color="grey-5" />
-                </q-item-section>
-              </q-item>
-              <q-item clickable v-ripple class="menu-item" @click="$emit('navigate', 'Cadeiras')">
-                <q-item-section avatar>
-                  <q-icon name="school" color="green" />
-                </q-item-section>
-                <q-item-section>Minhas Cadeiras</q-item-section>
-                <q-item-section side>
-                  <q-icon name="chevron_right" color="grey-5" />
-                </q-item-section>
-              </q-item>
-              <q-item clickable v-ripple class="menu-item" @click="$emit('navigate', 'ebooks')">
-                <q-item-section avatar>
-                  <q-icon name="menu_book" color="green" />
-                </q-item-section>
-                <q-item-section>Livros Digitais</q-item-section>
-                <q-item-section side>
-                  <q-icon name="chevron_right" color="grey-5" />
-                </q-item-section>
-              </q-item>
-              <q-item clickable v-ripple class="menu-item" @click="$emit('navigate', 'loja-academica')">
-                <q-item-section avatar>
-                  <q-icon name="shopping_cart" color="green" />
-                </q-item-section>
-                <q-item-section>Loja Acadêmica</q-item-section>
-                <q-item-section side>
-                  <q-icon name="chevron_right" color="grey-5" />
-                </q-item-section>
-              </q-item>
-              <q-separator class="q-my-sm" />
-              <q-item clickable v-ripple class="menu-item text-negative" @click="logout">
-                <q-item-section avatar>
-                  <q-icon name="logout" color="negative" />
-                </q-item-section>
-                <q-item-section>Sair</q-item-section>
-              </q-item>
-            </q-list>
-          </q-menu>
-        <!-- </q-btn> -->
+        <q-dialog v-model="showLogoutConfirm" persistent>
+          <q-card>
+            <q-card-section class="text-h6">Confirmar saída</q-card-section>
+            <q-card-section>Tem certeza que deseja sair?</q-card-section>
+            <q-card-actions align="right">
+              <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
+              <q-btn color="negative" label="Sair" @click="doLogout" />
+            </q-card-actions>
+          </q-card>
+        </q-dialog>
       </div>
     </div>
   </header>
@@ -163,21 +107,19 @@ import { firebaseAuth, db } from 'boot/firebase';
 
 const $q = useQuasar();
 const router = useRouter();
-const menuAnchor = ref(null);
-
 
 const user = ref({
   name: 'Estudante',
   apelido: '',
   instituicao: 'N/A',
   curso: 'N/A',
-  avatar: 'https://randomuser.me/api/portraits/women/45.jpg',
+  avatar: '',
   isPro: false,
   isLoaded: false
 });
 
 const showNotifications = ref(false);
-const showMenu = ref(false);
+const showLogoutConfirm = ref(false);
 
 const notifications = ref([
   {
@@ -224,7 +166,7 @@ onMounted(async () => {
             apelido: data.apelido || '',
             instituicao: data.instituicao || 'N/A',
             curso: data.curso || 'N/A',
-            avatar: data.image || 'https://randomuser.me/api/portraits/women/45.jpg',
+            avatar: data.image || '',
             isPro: data.isPro || false,
             isLoaded: true
           };
@@ -264,11 +206,6 @@ function toggleNotifications() {
   }
 }
 
-function toggleMenu() {
-  showMenu.value = !showMenu.value;
-
-  console.log('Toggling menu, current state:', showMenu.value);
-}
 
 function handleNotificationClick(notification) {
   if (!notification.read) {
@@ -292,7 +229,7 @@ function capitalizeWords(text) {
   return text.replace(/\b\w/g, char => char.toUpperCase());
 }
 
-function logout() {
+function doLogout() {
   firebaseAuth.signOut();
   router.push('/login');
 }

@@ -21,11 +21,11 @@
       <q-tab-panel name="temas">
         <div v-if="temas.length === 0" class="text-center q-pa-md">Nenhum tema disponível.</div>
         <q-list v-else bordered class="rounded-borders">
-          <q-item
+<q-item
             v-for="(tema, index) in temas"
             :key="index"
             clickable
-            @click="goToTema(tema.id)"
+            @click="selectTema(tema)"
             class="q-my-sm"
           >
             <q-item-section avatar>
@@ -43,9 +43,13 @@
         </q-tab-panel>
 
       <q-tab-panel name="videos">
-        <div v-if="videos.length === 0" class="text-center q-pa-md">Nenhum vídeo disponível.</div>
+        <div class="row items-center q-mb-sm" v-if="selectedTema">
+          <q-chip color="primary" text-color="white" icon="topic">{{ selectedTema.nome }}</q-chip>
+          <q-btn flat dense icon="clear" @click="clearTema" class="q-ml-sm" />
+        </div>
+        <div v-if="filteredVideos.length === 0" class="text-center q-pa-md">Nenhum vídeo disponível.</div>
         <q-list v-else>
-          <q-item v-for="video in videos" :key="video.id" clickable @click="playVideo(video)">
+          <q-item v-for="video in filteredVideos" :key="video.id" clickable @click="playVideo(video)">
             <q-item-section avatar>
               <q-icon name="play_circle" color="primary" />
             </q-item-section>
@@ -61,7 +65,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { collection, getDocs, query, orderBy, where } from 'firebase/firestore'
 import { db } from 'boot/firebase'
@@ -72,12 +76,17 @@ const router = useRouter()
 const route = useRoute()
 
 const tab = ref('temas')
-const cadeiraId = route.params.cadeiraId
+// const cadeiraId = route.params.cadeiraId
 const moduloId = route.params.moduloId
 const modulo = ref({ nome: 'Carregando...' })
 const temas = ref([])
 const videos = ref([])
 const loading = ref(false)
+const selectedTemaId = ref(null)
+const selectedTema = computed(() => temas.value.find(t => t.id === selectedTemaId.value) || null)
+const filteredVideos = computed(() => {
+  return selectedTemaId.value ? videos.value.filter(v => v.temaId === selectedTemaId.value) : videos.value
+})
 
 async function loadData() {
   loading.value = true
@@ -101,13 +110,20 @@ async function loadData() {
     const temasSnapshot = await getDocs(temasQuery)
     temas.value = temasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
 
-    // Carrega videoaulas associadas aos temas
+    // Carrega videoaulas associadas aos temas (em batches de 10 ids para 'in')
     const temasIds = temas.value.map(tema => tema.id)
-    const videosQuery = temasIds.length
-      ? query(collection(db, 'videoaulas'), where('temaId', 'in', temasIds.slice(0, 10)), orderBy('titulo'))
-      : query(collection(db, 'videoaulas'), where('temaId', '==', 'none'))
-    const videosSnapshot = await getDocs(videosQuery)
-    videos.value = videosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+    videos.value = []
+    if (temasIds.length) {
+      const chunk = (arr, size) => arr.reduce((acc, _, i) => (i % size ? acc : [...acc, arr.slice(i, i + size)]), [])
+      const batches = chunk(temasIds, 10)
+      for (const ids of batches) {
+        const vq = query(collection(db, 'videoaulas'), where('temaId', 'in', ids), orderBy('titulo'))
+        const snap = await getDocs(vq)
+        videos.value.push(...snap.docs.map(doc => ({ id: doc.id, ...doc.data() })))
+      }
+    }
+    // ordena por titulo
+    videos.value = videos.value.sort((a,b) => String(a.titulo||'').localeCompare(String(b.titulo||'')))
 
     if (temas.value.length === 0) {
       $q.notify({
@@ -133,8 +149,13 @@ onMounted(async () => {
   await loadData()
 })
 
-function goToTema(id) {
-  router.push(`/cadeiras/${cadeiraId}/modulos/${moduloId}/temas/${id}`)
+function selectTema(tema) {
+  selectedTemaId.value = tema.id
+  tab.value = 'videos'
+}
+
+function clearTema() {
+  selectedTemaId.value = null
 }
 
 function playVideo(video) {
@@ -142,9 +163,13 @@ function playVideo(video) {
   router.push({
     path: '/video-player',
     query: {
+      id: video.id,
       titulo: video.titulo,
       descricao: video.descricao,
-      url: embedUrl
+      url: embedUrl,
+      temaId: video.temaId || '',
+      duracao: video.duracao || 0,
+      createdAt: (video.createdAt?.toDate ? video.createdAt.toDate() : new Date()).toISOString()
     }
   })
 }
