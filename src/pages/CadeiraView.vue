@@ -109,17 +109,21 @@
             class="modulo-card animate__animated"
             :class="{ 'animate__fadeInUp': cardVisible[index + videos.length] }"
             v-intersection="onCardIntersection(index + videos.length)"
-            @click="goToModulo(modulo.id)"
+            @click="handleModuleClick(modulo)"
           >
             <q-card-section class="modulo-header">
-              <q-avatar color="secondary" text-color="white" icon="view_module" size="md" />
+              <div class="row items-center no-wrap">
+                <q-avatar color="secondary" text-color="white" icon="view_module" size="md" />
+                <q-space />
+                <q-icon :name="isModuleUnlocked(modulo.id) ? 'lock_open' : 'lock'" color="grey-7" />
+              </div>
             </q-card-section>
             <q-card-section>
               <div class="modulo-title">{{ modulo.nome }}</div>
               <div class="modulo-description">{{ modulo.descricao }}</div>
             </q-card-section>
             <q-card-actions>
-              <q-btn flat color="primary" label="Explorar" icon-right="chevron_right" />
+              <q-btn flat color="primary" :label="isModuleUnlocked(modulo.id) ? 'Explorar' : 'Desbloquear'" icon-right="chevron_right" />
             </q-card-actions>
           </q-card>
         </div>
@@ -186,8 +190,20 @@
           @click="salvarAnotacao"
         />
       </q-tab-panel>
-    </q-tab-panels>
-  </q-page>
+  </q-tab-panels>
+  <q-dialog v-model="unlockDialogOpen">
+    <q-card>
+      <q-card-section class="text-h6">Desbloquear conteúdo</q-card-section>
+      <q-card-section>
+        <div>Este conteúdo está bloqueado. Deseja simular o desbloqueio?</div>
+      </q-card-section>
+      <q-card-actions align="right">
+        <q-btn flat label="Cancelar" v-close-popup />
+        <q-btn color="primary" :loading="savingUnlock" label="Simular desbloqueio" @click="confirmUnlock" />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
+</q-page>
 </template>
 
 <script setup>
@@ -216,6 +232,11 @@ const anotacaoTexto = ref('')
 const saving = ref(false)
 const loading = ref(false)
 const cardVisible = ref([])
+const unlockDialogOpen = ref(false)
+const unlockTargetType = ref('')
+const unlockTargetId = ref('')
+const savingUnlock = ref(false)
+const unlockedModules = ref(new Set())
 
 function goToTests() {
   router.push(`/cadeiras/${cadeiraId}/tests`)
@@ -320,6 +341,54 @@ function goToModulo(id) {
   router.push(`/cadeiras/${cadeiraId}/modulos/${id}`)
 }
 
+function loadUnlockedModules() {
+  try {
+    const key = `unlocks.modules.${cadeiraId}`
+    const raw = localStorage.getItem(key) || '[]'
+    const arr = JSON.parse(raw)
+    unlockedModules.value = new Set(Array.isArray(arr) ? arr : [])
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+function saveUnlockedModules() {
+  const key = `unlocks.modules.${cadeiraId}`
+  const arr = Array.from(unlockedModules.value)
+  localStorage.setItem(key, JSON.stringify(arr))
+}
+
+function isModuleUnlocked(id) {
+  return unlockedModules.value.has(id)
+}
+
+function handleModuleClick(modulo) {
+  if (!isModuleUnlocked(modulo.id)) {
+    unlockTargetType.value = 'module'
+    unlockTargetId.value = modulo.id
+    unlockDialogOpen.value = true
+    return
+  }
+  goToModulo(modulo.id)
+}
+
+async function confirmUnlock() {
+  savingUnlock.value = true
+  try {
+    if (unlockTargetType.value === 'module' && unlockTargetId.value) {
+      unlockedModules.value.add(unlockTargetId.value)
+      saveUnlockedModules()
+      $q.notify({ type: 'positive', message: 'Conteúdo desbloqueado' })
+    }
+    unlockDialogOpen.value = false
+  } catch (e) {
+    console.error(e)
+    $q.notify({ type: 'negative', message: 'Falha ao desbloquear' })
+  } finally {
+    savingUnlock.value = false
+  }
+}
+
 function isWatched(videoId) {
   return watchedSet.value.has(videoId)
 }
@@ -405,6 +474,7 @@ async function salvarAnotacao() {
 
 onMounted(async () => {
   await loadData()
+  loadUnlockedModules()
 })
 
 async function loadWatched() {

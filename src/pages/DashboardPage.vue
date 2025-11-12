@@ -3,7 +3,7 @@
     <!-- Header Modernizado -->
     <header class="app-header">
       <div class="header-content">
-        <div class="user-profile" @click="goTo('profile')">
+        <div class="user-profile">
           <q-avatar size="52px" class="profile-avatar glow-on-hover">
             <template v-if="user.avatar">
               <img :src="user.avatar">
@@ -131,48 +131,39 @@
             </q-menu>
           </div>
 
-          <!-- Botão de Logout no lugar do menu -->
+          <!-- Botão de Perfil no lugar do logout -->
           <q-btn
             flat
             round
-            icon="logout"
+            icon="person"
             color="grey-8"
             class="action-btn"
-            @click="showLogoutConfirm = true"
+            @click="goTo('profile')"
           />
-
-          <q-dialog v-model="showLogoutConfirm" persistent>
-            <q-card>
-              <q-card-section class="text-h6">Confirmar saída</q-card-section>
-              <q-card-section>Tem certeza que deseja sair?</q-card-section>
-              <q-card-actions align="right">
-                <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
-                <q-btn color="negative" label="Sair" @click="doLogout" />
-              </q-card-actions>
-            </q-card>
-          </q-dialog>
         </div>
       </div>
     </header>
 
-    <!-- Conteúdo Principal Modernizado -->
     <q-page class="main-content">
       <div class="hero-section">
         <div class="hero-content">
-          <h1 class="hero-title">
-            <span class="hero-highlight">Bem-vindo, {{ user.name?.split(' ')[0] || 'Estudante' }}</span>
-            <span class="hero-subtitle">O que vamos aprender hoje?</span>
-          </h1>
-
-          <q-banner inline-actions rounded class="bg-green-10 text-white q-mb-lg">
-            <template v-slot:avatar>
-              <q-icon name="stars" size="sm" />
-            </template>
-            Você tem {{ unreadNotifications.length }} notificação{{ unreadNotifications.length !== 1 ? 'es' : '' }} não lida{{ unreadNotifications.length !== 1 ? 's' : '' }}
-            <template v-slot:action>
-              <q-btn flat color="white" label="Ver" @click="goTo('notificacoes')" />
-            </template>
-          </q-banner>
+          <q-carousel v-model="heroSlide" animated infinite height="180px" arrows navigation class="hero-carousel">
+            <q-carousel-slide :name="1" class="hero-slide">
+              <div class="slide-content column items-start justify-center">
+                <div class="text-overline text-white opacity-7 q-mb-xs">Saudação</div>
+                <h1 class="hero-title q-mb-none">
+                  <span class="hero-highlight">{{ isFirstLogin ? 'Bem-vindo' : 'Bem-vindo de volta' }}, {{ firstName }}</span>
+                </h1>
+                <div class="hero-subtitle q-mt-xs">O que vamos aprender hoje?</div>
+              </div>
+            </q-carousel-slide>
+            <q-carousel-slide :name="2" class="hero-slide">
+              <div class="slide-content column items-start justify-center">
+                <div class="text-overline text-white opacity-7 q-mb-xs">Sugestão</div>
+                <div class="text-subtitle1">Continue de onde parou</div>
+              </div>
+            </q-carousel-slide>
+          </q-carousel>
         </div>
       </div>
 
@@ -186,138 +177,33 @@
           Selecione uma das opções abaixo para começar sua jornada de aprendizagem
         </p>
 
-        <div class="dashboard-grid">
-          <dashboard-card
-            v-for="(card, index) in cards"
-            :key="index"
-            :label="card.label"
-            :icon="card.icon"
-            :color="card.color"
-            :gradient="card.gradient"
-            :delay="index * 100"
-            @click="goTo(card.route)"
-          />
-        </div>
+        <q-list bordered separator class="menu-bars q-mt-sm">
+          <q-item v-for="(item, index) in menuItems" :key="index" clickable v-ripple @click="goTo(item.route)" class="menu-bar-item">
+            <q-item-section avatar>
+              <q-icon :name="item.icon" :color="item.color || 'primary'" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label class="text-weight-medium">{{ item.label }}</q-item-label>
+              <q-item-label caption v-if="item.caption">{{ item.caption }}</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-icon name="chevron_right" color="grey-6" />
+            </q-item-section>
+          </q-item>
+        </q-list>
       </div>
     </q-page>
 
-    <!-- Footer Modernizado -->
-    <footer class="app-footer">
-      <div class="footer-wave">
-        <svg viewBox="0 0 1200 120" preserveAspectRatio="none">
-          <path d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z" opacity=".25" fill="currentColor"></path>
-          <path d="M0,0V15.81C13,36.92,27.64,56.86,47.69,72.05,99.41,111.27,165,111,224.58,91.58c31.15-10.15,60.09-26.07,89.67-39.8,40.92-19,84.73-46,130.83-49.67,36.26-2.85,70.9,9.42,98.6,31.56,31.77,25.39,62.32,62,103.63,73,40.44,10.79,81.35-6.69,119.13-24.28s75.16-39,116.92-43.05c59.73-5.85,113.28,22.88,168.9,38.84,30.2,8.66,59,6.17,87.09-7.5,22.43-10.89,48-26.93,60.65-49.24V0Z" opacity=".5" fill="currentColor"></path>
-          <path d="M0,0V5.63C149.93,59,314.09,71.32,475.83,42.57c43-7.64,84.23-20.12,127.61-26.46,59-8.63,112.48,12.24,165.56,35.4C827.93,77.22,886,95.24,951.2,90c86.53-7,172.46-45.71,248.8-84.81V0Z" fill="currentColor"></path>
-        </svg>
-      </div>
-
-      <div class="footer-content">
-        <div class="footer-main">
-          <div class="footer-brand">
-            <div class="logo-wrapper">
-              <q-icon name="school" size="xl" color="primary" />
-              <span class="logo-text">Mawonelo</span>
-            </div>
-            <p class="brand-slogan">
-              Transformando a educação através da tecnologia
-            </p>
-            <div class="footer-social">
-              <q-btn
-                flat
-                round
-                icon="facebook"
-                color="grey-7"
-                size="md"
-                class="social-icon"
-              />
-              <q-btn
-                flat
-                round
-                icon="twitter"
-                color="grey-7"
-                size="md"
-                class="social-icon"
-              />
-              <q-btn
-                flat
-                round
-                icon="instagram"
-                color="grey-7"
-                size="md"
-                class="social-icon"
-              />
-              <q-btn
-                flat
-                round
-                icon="linkedin"
-                color="grey-7"
-                size="md"
-                class="social-icon"
-              />
-            </div>
-          </div>
-
-          <div class="footer-links">
-            <div class="link-group">
-              <h3 class="link-title">Recursos</h3>
-              <a href="#" class="footer-link">Cadeiras</a>
-              <a href="#" class="footer-link">Livros Digitais</a>
-              <a href="#" class="footer-link">Loja Acadêmica</a>
-              <a href="#" class="footer-link">Exames</a>
-            </div>
-
-            <div class="link-group">
-              <h3 class="link-title">Suporte</h3>
-              <a href="#" class="footer-link">Central de Ajuda</a>
-              <a href="#" class="footer-link">Tutoriais</a>
-              <a href="#" class="footer-link">Contato</a>
-              <a href="#" class="footer-link">Feedback</a>
-            </div>
-
-            <div class="link-group">
-              <h3 class="link-title">Legal</h3>
-              <a href="#" class="footer-link">Termos de Uso</a>
-              <a href="#" class="footer-link">Política de Privacidade</a>
-              <a href="#" class="footer-link">Cookies</a>
-              <a href="#" class="footer-link">Licenças</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="footer-bottom">
-          <div class="footer-copyright">
-            © 2025 Mawonelo - Todos os direitos reservados
-          </div>
-          <div class="footer-apps">
-            <q-btn
-              flat
-              round
-              icon="android"
-              color="grey-7"
-              size="sm"
-              class="app-icon"
-            />
-            <q-btn
-              flat
-              round
-              icon="apple"
-              color="grey-7"
-              size="sm"
-              class="app-icon"
-            />
-          </div>
-        </div>
-      </div>
-    </footer>
+    
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import DashboardCard from 'components/dashboard/DashboardCard.vue'
+// Removido o uso de DashboardCard; usando barras (q-list/q-item)
 import { onAuthStateChanged } from 'firebase/auth'
-import { collection, onSnapshot, query, where, orderBy, updateDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore'
+import { collection, onSnapshot, query, where, orderBy, updateDoc, serverTimestamp, doc, getDoc, setDoc } from 'firebase/firestore'
 import { firebaseAuth, db } from 'boot/firebase'
 
 const router = useRouter()
@@ -327,6 +213,9 @@ const user = ref({
   isPro: true,
   avatar: ''
 })
+const heroSlide = ref(1)
+const isFirstLogin = ref(false)
+const firstName = computed(() => (user.value.name || '').split(' ')[0] || 'Estudante')
 
 onMounted(() => {
   onAuthStateChanged(firebaseAuth, async (authUser) => {
@@ -351,6 +240,22 @@ onMounted(() => {
         console.error('Documento do usuário não encontrado.')
       }
 
+      // Detectar primeiro login por usuário
+      try {
+        const flagKey = `firstLoginFlag_${authUser.uid}`
+        const localFlag = localStorage.getItem(flagKey)
+        if (!localFlag) {
+          isFirstLogin.value = true
+          localStorage.setItem(flagKey, 'seen')
+          // opcional: marcar no Firestore
+          await setDoc(doc(db, 'users_meta', authUser.uid), { firstLoginSeenAt: serverTimestamp() }, { merge: true })
+        } else {
+          isFirstLogin.value = false
+        }
+      } catch (e) {
+        console.warn('Não foi possível registrar flag de primeiro login', e)
+      }
+
       // Subscrever notificações em tempo real
       if (unsubNotifications) unsubNotifications()
       const qn = query(
@@ -372,7 +277,8 @@ onMounted(() => {
       unsubNotifications = null
     }
   })
-})
+
+  })
 
 const goTo = (page) => {
   router.push(`/${page}`)
@@ -387,52 +293,17 @@ const showNotifications = ref(false)
 
 const notifications = ref([])
 let unsubNotifications = null
-const showLogoutConfirm = ref(false)
-
-function doLogout () {
-  try {
-    firebaseAuth.signOut()
-    router.push('/login')
-  } catch (e) {
-    console.error(e)
-  } finally {
-    showLogoutConfirm.value = false
-  }
-}
+// Removido logout: função e estado não utilizados
 
 const unreadNotifications = computed(() => {
   return notifications.value.filter(n => !n.read)
 })
 
-const cards = ref([
-  {
-    label: 'Encontrar Explicações em Vídeo',
-    icon: 'ondemand_video',
-    color: 'primary',
-    gradient: 'linear-gradient(135deg, #1976D2 0%, #2196F3 100%)',
-    route: 'cadeiras'
-  },
-  {
-    label: 'Meu Material de Estudo',
-    icon: 'folder_special',
-    color: 'cyan',
-    gradient: 'linear-gradient(135deg, #00BCD4 0%, #4DD0E1 100%)',
-    route: 'meu-material'
-  },
-  {
-    label: 'Fórum de Discussão',
-    icon: 'forum',
-    color: 'brown',
-    gradient: 'linear-gradient(135deg, #795548 0%, #A1887F 100%)',
-    route: 'forum'
-  },
-  {
-    label: 'Dúvidas',
-    icon: 'help',
-    color: 'orange',
-    gradient: 'linear-gradient(135deg, #FF9800 0%, #FFC107 100%)',
-    route: 'doubts'
-  }
+const menuItems = ref([
+  { label: 'Encontrar Explicações em Vídeo', icon: 'ondemand_video', color: 'primary', route: 'cadeiras', caption: 'Explore cadeiras e aulas em vídeo' },
+  { label: 'Meu Material de Estudo', icon: 'folder_special', color: 'teal', route: 'meu-material', caption: 'Anotações, dúvidas, favoritos e testes' },
+  { label: 'Fórum de Discussão', icon: 'forum', color: 'brown', route: 'forum', caption: 'Converse com a comunidade' },
+  { label: 'Dúvidas', icon: 'help', color: 'orange', route: 'doubts', caption: 'Veja e crie dúvidas' }
 ])
 
 async function toggleNotifications() {
@@ -678,10 +549,9 @@ function formatTime(date) {
 }
 
 .hero-section {
-  // background: linear-gradient(135deg, #1976D2 0%, #2196F3 100%);
   background: linear-gradient(135deg, #2E7D32 0%, #66BB6A 100%);
   color: white;
-  padding: 60px 24px 40px;
+  padding: 24px 24px 24px;
   position: relative;
   overflow: hidden;
 
@@ -703,6 +573,19 @@ function formatTime(date) {
   margin: 0 auto;
   text-align: left;
 }
+.hero-carousel { background: transparent; }
+.hero-slide { display:flex; align-items:center; height:100%; }
+.slide-content { width:100%; }
+.text-overline { letter-spacing: .08em; text-transform: uppercase; font-size: .75rem; }
+.opacity-7 { opacity: .7; }
+
+/* Tipografia refinada do hero */
+.hero-title { font-size: 2.2rem; margin: 0; }
+.hero-subtitle { font-size: 1.1rem; opacity: .9; }
+
+/* Navegação do carousel mais discreta */
+:deep(.q-carousel__navigation .q-btn) { opacity: .85; }
+:deep(.q-carousel__arrow) { opacity: .85; }
 
 .hero-title {
   font-size: 2.5rem;
@@ -750,20 +633,26 @@ function formatTime(date) {
   max-width: 800px;
 }
 
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 24px;
-  margin: 0 auto;
-
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 16px;
-  }
-
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
-  }
+/* Lista de barras do menu */
+.menu-bars {
+  border-radius: 12px;
+  overflow: hidden;
+  background: white;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+.menu-bar-item {
+  transition: all 0.2s ease;
+  padding: 16px 18px; /* aumento da altura */
+  min-height: 68px;
+}
+.menu-bar-item .q-item__section--avatar .q-icon {
+  font-size: 28px; /* ícone maior */
+}
+.menu-bar-item .q-item__label {
+  font-size: 1.05rem; /* texto levemente maior */
+}
+.menu-bar-item:hover {
+  background-color: rgba(25,118,210,0.05);
 }
 
 /* Footer Modernizado */
@@ -944,4 +833,6 @@ function formatTime(date) {
     }
   }
 }
+
+ 
 </style>

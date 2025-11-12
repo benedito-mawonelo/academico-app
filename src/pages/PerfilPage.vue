@@ -1,311 +1,244 @@
 <template>
-  <div class="app-layout">
-    <app-header @navigate="goTo" />
-    <q-page class="main-content">
-      <div class="hero-section">
-        <div class="hero-content">
-          <h1 class="hero-title animate__animated animate__fadeInDown">
-            <span class="hero-highlight">Meu Perfil</span>
-            <span class="hero-subtitle">Suas informações pessoais</span>
-          </h1>
-        </div>
+  <q-page class="profile-page">
+    <!-- Header verde com avatar central -->
+    <div class="profile-hero">
+      <div class="hero-actions">
+        <q-btn flat round dense icon="arrow_back" class="action-left" @click="goBack" />
+        <q-btn flat round dense icon="logout" class="action-right" @click="logout" />
       </div>
+      <div class="profile-hero-inner">
+        <q-avatar size="96px" class="profile-avatar">
+          <img v-if="user.image" :src="user.image" alt="avatar" />
+          <q-icon v-else name="account_circle" size="96px" />
+        </q-avatar>
+      </div>
+    </div>
 
-      <div class="profile-container">
-        <q-card v-if="!loading" flat bordered class="profile-card shadow-4 animate__animated animate__fadeIn">
-          <q-card-section class="text-center">
-            <q-avatar size="120px" class="q-mb-md">
-              <template v-if="user.foto">
-                <img :src="user.foto" alt="Foto do perfil" />
-              </template>
-              <q-icon v-else name="person" color="grey-6" size="80px" />
-            </q-avatar>
-            <div class="profile-name text-weight-bold text-green">{{ user.name }} {{ user.apelido }}</div>
-            <div class="profile-email text-grey-8 q-mt-sm">{{ user.email }}</div>
-          </q-card-section>
-
-          <q-card-section>
-            <div class="row q-col-gutter-md">
-              <div class="col-12 col-md-6">
-                <q-item>
-                  <q-item-section>
-                    <q-item-label caption>Instituição</q-item-label>
-                    <q-item-label>{{ user.instituicao || 'Não informado' }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </div>
-              <div class="col-12 col-md-6">
-                <q-item>
-                  <q-item-section>
-                    <q-item-label caption>Ano Acadêmico</q-item-label>
-                    <q-item-label>{{ user.ano || 'Não informado' }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </div>
-              <div class="col-12 col-md-6">
-                <q-item>
-                  <q-item-section>
-                    <q-item-label caption>Nível</q-item-label>
-                    <q-item-label>{{ user.nivel || 'Não informado' }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </div>
-              <div class="col-12 col-md-6">
-                <q-item>
-                  <q-item-section>
-                    <q-item-label caption>Curso</q-item-label>
-                    <q-item-label>{{ user.curso || 'Não informado' }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </div>
-              <div class="col-12 col-md-6">
-                <q-item>
-                  <q-item-section>
-                    <q-item-label caption>Província</q-item-label>
-                    <q-item-label>{{ user.provincia || 'Não informado' }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </div>
-              <div class="col-12 col-md-6">
-                <q-item>
-                  <q-item-section>
-                    <q-item-label caption>Telefone</q-item-label>
-                    <q-item-label>{{ user.telefone || 'Não informado' }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </div>
-              <div class="col-12 col-md-6">
-                <q-item>
-                  <q-item-section>
-                    <q-item-label caption>Ano de Nascimento</q-item-label>
-                    <q-item-label>{{ user.birthYear || 'Não informado' }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </div>
+    <div class="content-container q-pa-md">
+      <!-- Cartão de Assinaturas -->
+      <q-card flat bordered class="q-mb-md rounded-12">
+        <q-card-section class="text-subtitle1 text-weight-bold">Minhas Assinaturas</q-card-section>
+        <q-separator />
+        <q-card-section class="subscription-box">
+          <div class="row items-center justify-between">
+            <div>
+              <div class="text-weight-bold">{{ subscription.name }}</div>
+              <div class="text-caption text-grey-8">{{ formatDate(subscription.start) }} - {{ formatDate(subscription.end) }}</div>
+              <div class="text-caption text-positive q-mt-xs">{{ daysLeft }} dias restantes</div>
             </div>
-          </q-card-section>
+            <div class="row items-center q-gutter-sm">
+              <q-badge color="positive" class="q-px-sm" outline v-if="daysLeft > 0">ATIVO</q-badge>
+              <q-badge color="negative" class="q-px-sm" outline v-else>EXPIRADO</q-badge>
+              <q-btn color="primary" dense label="RENOVAR" @click="onRenew" />
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
 
-          <q-card-actions align="center">
-            <q-btn
-              color="green"
-              label="Editar Perfil"
-              rounded
-              class="full-width q-py-sm"
-              @click="goTo('editar-perfil')"
-            />
-          </q-card-actions>
-        </q-card>
-
-        <div v-else class="text-center q-pa-md">
-          <q-spinner color="green" size="3em" />
-          <div class="q-mt-md">Carregando perfil...</div>
+      <!-- Lista de campos do perfil -->
+      <q-card flat bordered class="rounded-12">
+        <q-list separator>
+          <q-item>
+            <q-item-section top class="text-grey-7">Nome Completo</q-item-section>
+            <q-item-section>{{ user.name }}</q-item-section>
+          <q-item-section side>
+              <q-btn flat round dense icon="edit" @click="openEdit('name')" />
+            </q-item-section>
+          </q-item>
+          <q-item>
+            <q-item-section top class="text-grey-7">Apelido</q-item-section>
+            <q-item-section>{{ user.apelido }}</q-item-section>
+            <q-item-section side>
+              <q-btn flat round dense icon="edit" @click="openEdit('apelido')" />
+            </q-item-section>
+          </q-item>
+          <q-item>
+            <q-item-section top class="text-grey-7">Telefone</q-item-section>
+            <q-item-section>{{ user.telefone }}</q-item-section>
+            <q-item-section side>
+              <q-btn flat round dense icon="edit" @click="openEdit('telefone')" />
+            </q-item-section>
+          </q-item>
+          <q-item>
+            <q-item-section top class="text-grey-7">Gênero</q-item-section>
+            <q-item-section>{{ user.genero }}</q-item-section>
+            <q-item-section side>
+              <q-btn flat round dense icon="edit" @click="openEdit('genero')" />
+            </q-item-section>
+          </q-item>
+          <q-item>
+            <q-item-section top class="text-grey-7">Ano de Nascimento</q-item-section>
+            <q-item-section>{{ user.anoNascimento }}</q-item-section>
+            <q-item-section side>
+              <q-btn flat round dense icon="edit" @click="openEdit('anoNascimento')" />
+            </q-item-section>
+          </q-item>
+          <q-item>
+            <q-item-section top class="text-grey-7">Província</q-item-section>
+            <q-item-section>{{ user.provincia }}</q-item-section>
+            <q-item-section side>
+              <q-btn flat round dense icon="edit" @click="openEdit('provincia')" />
+            </q-item-section>
+          </q-item>
+        </q-list>
+        <q-separator />
+        <div class="row justify-center q-pa-md">
+          <q-btn outline color="negative" label="ELIMINAR MINHA CONTA" disable />
         </div>
-      </div>
-    </q-page>
-    <app-footer />
-  </div>
+      </q-card>
+    </div>
+    <q-dialog v-model="editDialogOpen">
+      <q-card style="min-width: 320px">
+        <q-card-section class="text-h6">Editar</q-card-section>
+        <q-card-section>
+          <q-input v-model="editValue" :type="inputType" :label="inputLabel" dense outlined />
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn flat label="Cancelar" v-close-popup />
+          <q-btn color="primary" label="Salvar" :loading="saving" @click="saveEdit" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+  </q-page>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import { useQuasar } from 'quasar';
-import { firebaseAuth, db } from 'src/boot/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import AppHeader from 'components/AppHeader.vue';
-import AppFooter from 'components/AppFooter.vue';
-
-const $q = useQuasar();
-const router = useRouter();
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { onAuthStateChanged } from 'firebase/auth'
+import { firebaseAuth, db } from 'boot/firebase'
+import { signOut } from 'firebase/auth'
+import { doc, getDoc, updateDoc } from 'firebase/firestore'
 
 const user = ref({
   name: '',
   apelido: '',
-  email: '',
-  instituicao: '',
-  ano: '',
-  nivel: '',
-  foto: '',
-  birthYear: '',
-  curso: '',
+  telefone: '',
+  genero: '',
+  anoNascimento: '',
   provincia: '',
-  telefone: ''
-});
-const loading = ref(true);
+  image: ''
+})
 
-onMounted(() => {
-  onAuthStateChanged(firebaseAuth, async (currentUser) => {
-    if (!currentUser) {
-      $q.notify({
-        type: 'negative',
-        message: 'Nenhum usuário autenticado.',
-        position: 'top'
-      });
-      router.push('/login');
-      return;
-    }
+// Mock de assinatura (substituir por dados reais quando existirem)
+const subscription = ref({
+  name: 'Ganha Fácil',
+  start: new Date(),
+  end: new Date(Date.now() + 36 * 24 * 60 * 60 * 1000)
+})
 
-    try {
-      const uid = currentUser.uid;
-      const docRef = doc(db, 'users_academico', uid);
-      const docSnap = await getDoc(docRef);
+const daysLeft = computed(() => {
+  const now = new Date()
+  const end = subscription.value.end
+  const diff = Math.ceil((end - now) / (1000 * 60 * 60 * 24))
+  return Math.max(diff, 0)
+})
 
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        user.value = {
-          name: data.name || '',
-          apelido: data.apelido || '',
-          email: data.email || currentUser.email,
-          instituicao: data.instituicao || '',
-          ano: data.ano || '',
-          nivel: data.nivel || '',
-          foto: data.image || '',
-          birthYear: data.birthYear || '',
-          curso: data.curso || '',
-          provincia: data.provincia || '',
-          telefone: data.telefone || ''
-        };
-      } else {
-        $q.notify({
-          type: 'negative',
-          message: 'Dados do usuário não encontrados.',
-          position: 'top'
-        });
-      }
-    } catch (error) {
-      $q.notify({
-        type: 'negative',
-        message: 'Erro ao carregar perfil',
-        caption: error?.message || '',
-        position: 'top'
-      });
-    } finally {
-      loading.value = false;
-    }
-  });
-});
+const editDialogOpen = ref(false)
+const fieldBeingEdited = ref('')
+const editValue = ref('')
+const saving = ref(false)
+const currentUserId = ref('')
+const inputLabel = computed(() => {
+  const m = {
+    name: 'Nome Completo',
+    apelido: 'Apelido',
+    telefone: 'Telefone',
+    genero: 'Gênero',
+    anoNascimento: 'Ano de Nascimento',
+    provincia: 'Província'
+  }
+  return m[fieldBeingEdited.value] || 'Valor'
+})
+const inputType = computed(() => {
+  return ['telefone', 'anoNascimento'].includes(fieldBeingEdited.value) ? 'number' : 'text'
+})
 
-function goTo(page) {
-  router.push(`/${page}`);
+const router = useRouter()
+
+function goBack() {
+  router.back()
 }
+
+async function logout() {
+  try {
+    await signOut(firebaseAuth)
+    router.push('/login')
+  } catch (e) {
+    console.error(e)
+  }
+}
+
+function openEdit(field) {
+  fieldBeingEdited.value = field
+  editValue.value = user.value[field] || ''
+  editDialogOpen.value = true
+}
+
+async function saveEdit() {
+  if (!currentUserId.value || !fieldBeingEdited.value) return
+  try {
+    saving.value = true
+    const dref = doc(db, 'users_academico', currentUserId.value)
+    await updateDoc(dref, { [fieldBeingEdited.value]: editValue.value })
+    user.value[fieldBeingEdited.value] = editValue.value
+    editDialogOpen.value = false
+  } catch (e) {
+    console.error(e)
+  } finally {
+    saving.value = false
+  }
+}
+
+function onRenew () {
+  // ação de renovação (placeholder)
+}
+
+function formatDate (val) {
+  try {
+    const d = val instanceof Date ? val : val?.toDate?.() || new Date(val)
+    return d.toLocaleDateString('pt-PT')
+  } catch { return '' }
+}
+
+onMounted(async () => {
+  onAuthStateChanged(firebaseAuth, async (authUser) => {
+    if (authUser) {
+      try {
+        currentUserId.value = authUser.uid
+        const dref = doc(db, 'users_academico', authUser.uid)
+        const snap = await getDoc(dref)
+        if (snap.exists()) {
+          const data = snap.data()
+          user.value = {
+            name: data.name || '',
+            apelido: data.apelido || '',
+            telefone: data.telefone || '',
+            genero: data.genero || data.gender || '',
+            anoNascimento: data.anoNascimento || data.birthYear || '',
+            provincia: data.provincia || '',
+            image: data.image || ''
+          }
+        }
+      } catch (e) { console.error(e) }
+    }
+  })
+})
 </script>
 
-<style lang="scss" scoped>
-.app-layout {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background: linear-gradient(to bottom, #f0f4f8, #ffffff);
-}
+<script>
+export default {}
+</script>
 
-.main-content {
-  flex: 1;
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0;
-}
-
-.hero-section {
-  background: linear-gradient(135deg, #2E7D32 0%, #81C784 100%);
-  color: white;
-  padding: 40px 24px;
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxkZWZzPjxwYXR0ZXJuIGlkPSJwYXR0ZXJuIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHBhdHRlcm5Vbml0cz0idXNlclNwYWNlT25Vc2UiIHBhdHRlcm5UcmFuc2Zvcm09InJvdGF0ZSg0NSkiPjxyZWN0IHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA4KSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3QgZmlsbD0idXJsKCNwYXR0ZXJuKSIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIvPjwvc3ZnPg==');
-    opacity: 0.3;
-  }
-}
-
-.hero-content {
-  position: relative;
-  z-index: 1;
-  max-width: 1200px;
-  margin: 0 auto;
-  text-align: left;
-}
-
-.hero-title {
-  font-size: 2.2rem;
-  font-weight: 700;
-  line-height: 1.2;
-  margin-bottom: 16px;
-
-  .hero-highlight {
-    display: block;
-    text-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
-  }
-
-  .hero-subtitle {
-    display: block;
-    font-size: 1.4rem;
-    font-weight: 400;
-    opacity: 0.9;
-    margin-top: 8px;
-  }
-}
-
-.profile-container {
-  padding: 32px;
-}
-
-.profile-card {
-  border-radius: 16px;
-  background: white;
-  max-width: 800px;
-  margin: 0 auto;
-
-  .q-avatar {
-    transition: transform 0.3s ease;
-
-    &:hover {
-      transform: scale(1.05);
-    }
-  }
-
-  .profile-name {
-    font-size: 1.8rem;
-  }
-
-  .profile-email {
-    font-size: 1rem;
-  }
-}
-
-@media (max-width: 600px) {
-  .hero-title {
-    font-size: 1.8rem;
-
-    .hero-subtitle {
-      font-size: 1.2rem;
-    }
-  }
-
-  .profile-container {
-    padding: 16px;
-  }
-
-  .profile-card {
-    .profile-name {
-      font-size: 1.4rem;
-    }
-
-    .profile-email {
-      font-size: 0.9rem;
-    }
-
-    .q-avatar {
-      size: 100px;
-    }
-  }
-}
+<style scoped>
+.profile-page{ background: #f5f6f8; }
+.profile-hero{ height: 140px; background: linear-gradient(135deg,#2E7D32,#66BB6A); border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; position: relative; }
+.hero-actions{ position: absolute; top: 8px; left: 12px; right: 12px; display: flex; justify-content: space-between; z-index: 2; }
+.action-left{ }
+.action-right{ }
+.profile-hero-inner{ position: absolute; left: 50%; bottom: -48px; transform: translateX(-50%); }
+.profile-avatar{ border: 4px solid #fff; box-shadow: 0 6px 20px rgba(0,0,0,.15); background: #fff; }
+.content-container{ max-width: 1100px; margin: 64px auto 24px; }
+.subscription-box{ background: #f4faf4; border-radius: 10px; border: 1px solid #e6f1e6; }
+.rounded-12{ border-radius: 12px; }
 </style>

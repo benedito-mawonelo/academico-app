@@ -21,11 +21,11 @@
       <q-tab-panel name="temas">
         <div v-if="temas.length === 0" class="text-center q-pa-md">Nenhum tema disponível.</div>
         <q-list v-else bordered class="rounded-borders">
-<q-item
+          <q-item
             v-for="(tema, index) in temas"
             :key="index"
             clickable
-            @click="selectTema(tema)"
+            @click="handleTemaClick(tema)"
             class="q-my-sm"
           >
             <q-item-section avatar>
@@ -36,11 +36,14 @@
               <q-item-label caption>{{ tema.descricao || 'Sem descrição disponível' }}</q-item-label>
             </q-item-section>
             <q-item-section side>
-              <q-icon name="chevron_right" />
+              <div class="row items-center no-wrap">
+                <q-icon :name="isTemaUnlocked(tema.id) ? 'lock_open' : 'lock'" color="grey-7" class="q-mr-sm" />
+                <q-icon name="chevron_right" />
+              </div>
             </q-item-section>
           </q-item>
         </q-list>
-        </q-tab-panel>
+      </q-tab-panel>
 
       <q-tab-panel name="videos">
         <div class="row items-center q-mb-sm" v-if="selectedTema">
@@ -60,7 +63,19 @@
           </q-item>
         </q-list>
       </q-tab-panel>
-    </q-tab-panels>
+  </q-tab-panels>
+  <q-dialog v-model="unlockDialogOpen">
+    <q-card>
+      <q-card-section class="text-h6">Desbloquear tema</q-card-section>
+      <q-card-section>
+        <div>Este tema está bloqueado. Deseja simular o desbloqueio?</div>
+      </q-card-section>
+      <q-card-actions align="right">
+        <q-btn flat label="Cancelar" v-close-popup />
+        <q-btn color="primary" :loading="savingUnlock" label="Simular desbloqueio" @click="confirmUnlock" />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
   </q-page>
 </template>
 
@@ -87,6 +102,10 @@ const selectedTema = computed(() => temas.value.find(t => t.id === selectedTemaI
 const filteredVideos = computed(() => {
   return selectedTemaId.value ? videos.value.filter(v => v.temaId === selectedTemaId.value) : videos.value
 })
+const unlockDialogOpen = ref(false)
+const savingUnlock = ref(false)
+const unlockTemaId = ref('')
+const unlockedTemas = ref(new Set())
 
 async function loadData() {
   loading.value = true
@@ -147,6 +166,7 @@ async function loadData() {
 
 onMounted(async () => {
   await loadData()
+  loadUnlockedTemas()
 })
 
 function selectTema(tema) {
@@ -172,6 +192,53 @@ function playVideo(video) {
       createdAt: (video.createdAt?.toDate ? video.createdAt.toDate() : new Date()).toISOString()
     }
   })
+}
+
+function loadUnlockedTemas() {
+  try {
+    const key = `unlocks.temas.${moduloId}`
+    const raw = localStorage.getItem(key) || '[]'
+    const arr = JSON.parse(raw)
+    unlockedTemas.value = new Set(Array.isArray(arr) ? arr : [])
+  } catch (err) {
+    console.error(err)
+  }
+}
+
+function saveUnlockedTemas() {
+  const key = `unlocks.temas.${moduloId}`
+  const arr = Array.from(unlockedTemas.value)
+  localStorage.setItem(key, JSON.stringify(arr))
+}
+
+function isTemaUnlocked(id) {
+  return unlockedTemas.value.has(id)
+}
+
+function handleTemaClick(tema) {
+  if (!isTemaUnlocked(tema.id)) {
+    unlockTemaId.value = tema.id
+    unlockDialogOpen.value = true
+    return
+  }
+  selectTema(tema)
+}
+
+async function confirmUnlock() {
+  savingUnlock.value = true
+  try {
+    if (unlockTemaId.value) {
+      unlockedTemas.value.add(unlockTemaId.value)
+      saveUnlockedTemas()
+      $q.notify({ type: 'positive', message: 'Tema desbloqueado' })
+    }
+    unlockDialogOpen.value = false
+  } catch (e) {
+    console.error(e)
+    $q.notify({ type: 'negative', message: 'Falha ao desbloquear' })
+  } finally {
+    savingUnlock.value = false
+  }
 }
 </script>
 
