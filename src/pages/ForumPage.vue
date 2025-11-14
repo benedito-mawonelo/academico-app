@@ -1,8 +1,9 @@
 <template>
-  <q-page class="forum-page">
+  <div class="forum-layout">
     <app-header @navigate="goTo" />
 
-    <div class="page-container q-pa-md">
+    <q-page class="forum-page">
+      <div class="page-container q-pa-md">
       <!-- Cabeçalho da Página -->
       <div class="page-header q-mb-lg">
         <div class="row items-center justify-between">
@@ -134,7 +135,47 @@
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </q-page>
+
+    <!-- Footer compacto igual ao Dashboard -->
+    <footer class="app-footer-compact">
+      <div class="footer-icons-container">
+        <q-btn
+          flat
+          round
+          icon="home"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('dashboard')"
+        >
+          <q-tooltip>Dashboard</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="notifications"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('notificacoes')"
+        >
+          <q-tooltip>Notificações</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="person"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('profile')"
+        >
+          <q-tooltip>Perfil</q-tooltip>
+        </q-btn>
+      </div>
+    </footer>
 
     <!-- Dialog para Agendar Aula (Professores) -->
     <q-dialog v-model="showScheduleDialog" persistent>
@@ -223,8 +264,7 @@
       </q-card>
     </q-dialog>
 
-    <app-footer />
-  </q-page>
+  </div>
 </template>
 
 <script setup>
@@ -234,7 +274,6 @@ import { useQuasar } from 'quasar'
 import { useForumStore } from '../stores/modules/forumService'
 import LiveClassCard from '../components/LiveClassCard.vue'
 import AppHeader from '../components/AppHeader.vue'
-import AppFooter from '../components/AppFooter.vue'
 
 const $q = useQuasar()
 const router = useRouter()
@@ -499,9 +538,15 @@ onMounted(async () => {
 </script>
 
 <style scoped lang="scss">
-.forum-page {
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+.forum-layout {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+}
+
+.forum-page {
+  flex: 1;
 }
 
 .page-container {
@@ -549,6 +594,53 @@ onMounted(async () => {
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Footer compacto igual ao Dashboard */
+.app-footer-compact {
+  background: white;
+  border-top: 1px solid #e0e0e0;
+  padding: 12px 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 900;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
+
+  .footer-icons-container {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    max-width: 100%;
+    padding: 8px 0;
+
+    .footer-icon-btn {
+      transition: all 0.3s ease;
+      position: relative;
+      color: #999 !important;
+
+      &:hover {
+        color: var(--q-primary) !important;
+        transform: scale(1.1);
+      }
+
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 3px;
+        background-color: var(--q-primary);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+      }
+
+      &:hover::after {
+        width: 24px;
+      }
+    }
+  }
 }
 
 @media (max-width: 768px) {

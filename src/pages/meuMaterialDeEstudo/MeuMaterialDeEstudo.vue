@@ -1,134 +1,248 @@
 <template>
   <div class="app-layout">
-    <!-- Header -->
-    <header class="app-header">
-      <div class="header-content">
-        <div class="logo-wrapper">
-          <q-icon name="school" size="lg" color="primary" />
-          <span class="logo-text">EstudoPro</span>
-        </div>
-        <div class="header-actions">
-          <q-btn flat round icon="search" color="grey-8" @click="goTo('search')" />
-          <q-btn flat round icon="notifications" color="grey-8">
-            <q-badge v-if="unreadNotifications" color="red" floating rounded>
-              {{ unreadNotifications }}
-            </q-badge>
-          </q-btn>
-        </div>
-      </div>
-    </header>
+    <!-- Header igual ao Dashboard -->
+    <app-header @navigate="goTo" />
 
     <!-- Conteúdo Principal -->
     <q-page class="main-content">
-      <div class="hero-section">
-        <div class="hero-content">
-          <h1 class="hero-title">
-            <span class="hero-highlight">Organize seus estudos</span>
-            <span class="hero-subtitle">Acesse vídeos e notas em um só lugar</span>
-          </h1>
-        </div>
+      <!-- Apenas menus Vídeos / Favoritos -->
+      <div class="menu-tabs">
+        <q-tabs
+          v-model="activeTab"
+          class="tabs-modern text-primary"
+          active-color="primary"
+          indicator-color="accent"
+          align="center"
+          dense
+        >
+          <q-tab name="videos" label="Vídeos" icon="ondemand_video" class="tab-item" />
+          <q-tab name="favorites" label="Favoritos" icon="favorite" class="tab-item" />
+        </q-tabs>
       </div>
 
       <div class="study-container">
-        <!-- Seção de Vídeos -->
-        <div class="section-header">
-          <q-icon name="ondemand_video" color="primary" size="md" class="q-mr-sm" />
-          <h2 class="section-title">Vídeos Offline</h2>
-        </div>
-        <q-carousel
-          v-model="videoSlide"
-          swipeable
-          animated
-          control-color="primary"
-          navigation
-          class="video-carousel"
-        >
-          <q-carousel-slide
-            v-for="(video, index) in videos"
-            :key="index"
-            :name="index"
-            class="video-slide"
+        <!-- Conteúdo quando a aba "Vídeos" está ativa -->
+        <template v-if="activeTab === 'videos'">
+          <div class="section-header">
+            <q-icon name="ondemand_video" color="primary" size="md" class="q-mr-sm" />
+            <h2 class="section-title">Vídeos Baixados</h2>
+          </div>
+          <q-carousel
+            v-if="downloadedVideos.length"
+            v-model="videoSlide"
+            swipeable
+            animated
+            control-color="primary"
+            navigation
+            class="video-carousel"
           >
-            <div class="video-card" @click="goToVideo(video.id)">
+            <q-carousel-slide
+              v-for="(video, index) in downloadedVideos"
+              :key="video.id"
+              :name="index"
+              class="video-slide"
+            >
+              <div class="video-card" @click="goToDownloadedVideo(video)">
+                <q-img :src="video.thumbnail" class="video-thumbnail" />
+                <div class="video-info">
+                  <div class="video-title">{{ video.titulo }}</div>
+                  <div class="text-caption text-grey-7">{{ video.duracao ? video.duracao + ' min' : '' }}</div>
+                </div>
+              </div>
+            </q-carousel-slide>
+          </q-carousel>
+          <div v-else class="text-center q-pa-lg text-grey-7">
+            Nenhum vídeo baixado ainda.
+          </div>
+        </template>
+
+        <!-- Conteúdo quando a aba "Favoritos" está ativa -->
+        <template v-else>
+          <div class="section-header">
+            <q-icon name="favorite" color="primary" size="md" class="q-mr-sm" />
+            <h2 class="section-title">Vídeos Favoritos</h2>
+          </div>
+          <div class="favorites-grid" v-if="favorites.length">
+            <div
+              v-for="video in favorites"
+              :key="video.id"
+              class="video-card"
+              @click="goToFavoriteVideo(video)"
+            >
               <q-img :src="video.thumbnail" class="video-thumbnail" />
               <div class="video-info">
-                <div class="video-title">{{ video.title }}</div>
+                <div class="video-title">{{ video.titulo }}</div>
                 <q-btn
                   flat
                   round
-                  :icon="video.isFavorite ? 'favorite' : 'favorite_border'"
+                  icon="favorite"
                   color="red"
-                  @click.stop="toggleFavorite(video.id)"
+                  @click.stop="removeFavorite(video.id)"
                 />
               </div>
             </div>
-          </q-carousel-slide>
-        </q-carousel>
-
-        <!-- Seção de Notas -->
-        <div class="section-header">
-          <q-icon name="edit_note" color="primary" size="md" class="q-mr-sm" />
-          <h2 class="section-title">Suas Notas</h2>
-        </div>
-        <div class="notes-grid">
-          <div
-            v-for="note in notes"
-            :key="note.id"
-            class="note-card"
-            @click="goToNote(note.id)"
-          >
-            <div class="note-title">{{ note.title }}</div>
-            <div class="note-preview">{{ note.content.slice(0, 50) }}...</div>
           </div>
-        </div>
-
+          <div v-else class="text-center q-pa-lg text-grey-7">
+            Nenhum vídeo favorito ainda.
+          </div>
+        </template>
       </div>
     </q-page>
 
-    <!-- Bottom Menu -->
-    <q-footer class="bottom-menu">
-      <q-tabs
-        v-model="activeTab"
-        dense
-        class="text-grey-8"
-        active-color="primary"
-        indicator-color="primary"
-      >
-        <q-tab name="videos" icon="ondemand_video" label="Vídeos" @click="goTo('videos')" />
-        <q-tab name="favorites" icon="favorite" label="Favoritos" @click="goTo('favorites')" />
-        <q-tab name="notes" icon="edit_note" label="Notas" @click="goTo('notes')" />
-      </q-tabs>
-    </q-footer>
+    <!-- Footer compacto igual ao Dashboard -->
+    <footer class="app-footer-compact">
+      <div class="footer-icons-container">
+        <q-btn
+          flat
+          round
+          icon="home"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('dashboard')"
+        >
+          <q-tooltip>Dashboard</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="notifications"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('notificacoes')"
+        >
+          <q-tooltip>Notificações</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="person"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('profile')"
+        >
+          <q-tooltip>Perfil</q-tooltip>
+        </q-btn>
+      </div>
+    </footer>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { getAuth } from 'firebase/auth'
+import { collection, getDocs, query, where, doc, deleteDoc } from 'firebase/firestore'
+import { db } from 'boot/firebase'
+import AppHeader from 'components/AppHeader.vue'
 
 const router = useRouter()
 const activeTab = ref('videos')
 const videoSlide = ref(0)
-const unreadNotifications = ref(3)
 
-// Dados simulados
-const videos = ref([
-  { id: 1, title: 'Matemática: Equações', thumbnail: 'https://placeimg.com/640/360/tech', isFavorite: false },
-  { id: 2, title: 'Física: Movimento', thumbnail: 'https://placeimg.com/640/360/tech', isFavorite: true },
-])
-const notes = ref([
-  { id: 1, title: 'Resumo de Cálculo', content: 'Derivadas e integrais...' },
-  { id: 2, title: 'Fórmulas de Física', content: 'Leis de Newton...' },
-])
+// Vídeos baixados pelo usuário (coleção userDownloadedVideos)
+const downloadedVideos = ref([])
 
-// Funções de navegação
+// Favoritos reais do usuário (coleção userFavorites)
+const favorites = ref([])
+
+// Navegação genérica
 const goTo = (page) => router.push(`/${page}`)
-const goToVideo = (id) => router.push(`/video/${id}`)
-const goToNote = (id) => router.push(`/note/${id}`)
-const toggleFavorite = (id) => {
-  const video = videos.value.find(v => v.id === id)
-  if (video) video.isFavorite = !video.isFavorite
+
+// Abrir vídeo baixado
+const goToDownloadedVideo = (video) => {
+  const embedUrl = getEmbedUrl(video.url)
+  router.push({
+    path: '/video-player',
+    query: {
+      id: video.id,
+      titulo: video.titulo,
+      descricao: video.descricao,
+      url: embedUrl,
+      duracao: video.duracao,
+      temaId: video.temaId,
+    },
+  })
 }
+
+// Helper para extrair ID do YouTube e montar thumbnail/embed
+function getVideoId(url) {
+  const regExp = /^.*(youtu.be\/_?|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
+  const match = url?.match(regExp)
+  return match && match[2].length === 11 ? match[2] : ''
+}
+
+function getEmbedUrl(url) {
+  if (!url) return ''
+  if (url.includes('/embed/')) return url
+  if (url.includes('watch?v=')) return url.replace('watch?v=', 'embed/')
+  const m = url.match(/youtu\.be\/([^?&]+)/)
+  if (m && m[1]) return `https://www.youtube.com/embed/${m[1]}`
+  return url
+}
+
+async function loadFavorites() {
+  const auth = getAuth()
+  const user = auth.currentUser
+  if (!user) return
+
+  const snap = await getDocs(query(collection(db, 'userFavorites'), where('userId', '==', user.uid)))
+  favorites.value = snap.docs.map(d => {
+    const data = d.data()
+    return {
+      id: data.videoId,
+      ...data,
+      thumbnail: `https://img.youtube.com/vi/${getVideoId(data.url)}/mqdefault.jpg`,
+    }
+  })
+}
+
+async function loadDownloadedVideos() {
+  const auth = getAuth()
+  const user = auth.currentUser
+  if (!user) return
+
+  const snap = await getDocs(query(collection(db, 'userDownloadedVideos'), where('userId', '==', user.uid)))
+  downloadedVideos.value = snap.docs.map(d => {
+    const data = d.data()
+    return {
+      id: data.videoId,
+      ...data,
+      thumbnail: `https://img.youtube.com/vi/${getVideoId(data.url)}/mqdefault.jpg`,
+    }
+  })
+}
+
+const goToFavoriteVideo = (video) => {
+  const embedUrl = getEmbedUrl(video.url)
+  router.push({
+    path: '/video-player',
+    query: {
+      id: video.id,
+      titulo: video.titulo,
+      descricao: video.descricao,
+      url: embedUrl,
+      duracao: video.duracao,
+      temaId: video.temaId,
+    },
+  })
+}
+
+async function removeFavorite(id) {
+  const auth = getAuth()
+  const user = auth.currentUser
+  if (!user) return
+  const ref = doc(db, 'userFavorites', `${user.uid}_${id}`)
+  await deleteDoc(ref)
+  favorites.value = favorites.value.filter(v => v.id !== id)
+}
+
+onMounted(async () => {
+  await loadDownloadedVideos()
+  await loadFavorites()
+})
 </script>
 
 <style lang="scss" scoped>
@@ -139,72 +253,31 @@ const toggleFavorite = (id) => {
   background-color: #f8f9fa;
 }
 
-/* Header */
-.app-header {
-  background: white;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  padding: 12px 24px;
-  position: sticky;
-  top: 0;
-  z-index: 1000;
+/* Tabs de menu estilo "MÓDULOS" */
+.menu-tabs {
+  max-width: 1200px;
+  margin: 16px auto 0;
+  padding: 0 24px;
+}
 
-  .header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    max-width: 1400px;
-    margin: 0 auto;
-  }
+.tabs-modern {
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-radius: 12px;
+  overflow: hidden;
 
-  .logo-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+  .tab-item {
+    font-weight: 500;
+    padding: 12px 24px;
+    transition: all 0.3s ease;
 
-    .logo-text {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: #333;
+    &:hover {
+      background: rgba(0,0,0,0.05);
     }
   }
-
-  .header-actions {
-    display: flex;
-    gap: 12px;
-  }
 }
 
-/* Hero Section */
-.hero-section {
-  background: linear-gradient(135deg, #2E7D32 0%, #66BB6A 100%);
-  color: white;
-  padding: 60px 24px 40px;
-  position: relative;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxkZWZzPjxwYXR0ZXJuIGlkPSJwYXR0ZXJuIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHBhdHRlcm5Vbml0cz0idXNlclNwYWNlT25Vc2UiIHBhdHRlcm5UcmFuc2Zvcm09InJvdGF0ZSg0NSkiPjxyZWN0IHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3QgZmlsbD0idXJsKCNwYXR0ZXJuKSIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIvPjwvc3ZnPg==');
-  }
-
-  .hero-content {
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-
-  .hero-title {
-    font-size: 2.5rem;
-    font-weight: 700;
-    line-height: 1.2;
-
-    .hero-highlight { display: block; }
-    .hero-subtitle { font-size: 1.5rem; font-weight: 400; opacity: 0.9; }
-  }
-}
+/* Hero removido (apenas para limpar estilos antigos) */
 
 /* Study Container */
 .study-container {
@@ -225,11 +298,17 @@ const toggleFavorite = (id) => {
   }
 }
 
-/* Vídeos */
+/* Vídeos / Favoritos */
 .video-carousel {
   border-radius: 12px;
   overflow: hidden;
   margin-bottom: 32px;
+}
+
+.favorites-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
 }
 
 .video-card {
@@ -317,16 +396,50 @@ const toggleFavorite = (id) => {
   }
 }
 
-/* Bottom Menu */
-.bottom-menu {
+/* Footer compacto igual ao Dashboard */
+.app-footer-compact {
   background: white;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  border-top: 1px solid #e0e0e0;
+  padding: 12px 0;
   position: sticky;
   bottom: 0;
-  z-index: 1000;
+  z-index: 900;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
 
-  .q-tabs {
+  .footer-icons-container {
+    display: flex;
     justify-content: space-around;
+    align-items: center;
+    max-width: 100%;
+    padding: 8px 0;
+
+    .footer-icon-btn {
+      transition: all 0.3s ease;
+      position: relative;
+      color: #999 !important;
+
+      &:hover {
+        color: var(--q-primary) !important;
+        transform: scale(1.1);
+      }
+
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 3px;
+        background-color: var(--q-primary);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+      }
+
+      &:hover::after {
+        width: 24px;
+      }
+    }
   }
 }
 

@@ -1,8 +1,43 @@
 <template>
   <q-page class="q-pa-md">
-    <div class="row items-center justify-between q-mb-md">
-      <div class="text-h5">Painel do Professor</div>
-      <q-btn color="primary" icon="add" label="Agendar Aula" @click="openScheduleDialog" />
+    <!-- Header com dados do professor -->
+    <div class="row items-center justify-between q-mb-md professor-header">
+      <div class="row items-center no-wrap">
+        <q-avatar size="52px" class="q-mr-md">
+          <template v-if="professor.avatar">
+            <img :src="professor.avatar" alt="Foto do professor" />
+          </template>
+          <q-icon v-else name="person" color="white" />
+        </q-avatar>
+        <div class="column">
+          <div class="text-subtitle1 text-weight-bold">{{ professor.name || 'Professor' }}</div>
+          <div class="text-caption text-grey-7">{{ professor.email }}</div>
+        </div>
+      </div>
+
+      <div class="row items-center no-wrap q-gutter-sm">
+        <q-btn color="primary" icon="add" label="Agendar Aula" @click="openScheduleDialog" />
+
+        <q-btn round flat icon="more_vert">
+          <q-menu>
+            <q-list style="min-width: 160px">
+              <q-item clickable v-close-popup @click="goToPerfil">
+                <q-item-section avatar>
+                  <q-icon name="person" />
+                </q-item-section>
+                <q-item-section>Perfil</q-item-section>
+              </q-item>
+
+              <q-item clickable v-close-popup @click="logout">
+                <q-item-section avatar>
+                  <q-icon name="logout" />
+                </q-item-section>
+                <q-item-section>Sair</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </q-btn>
+      </div>
     </div>
 
     <q-tabs v-model="tab" class="text-primary" active-color="primary" indicator-color="primary" align="left" dense>
@@ -84,15 +119,24 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useForumStore } from 'src/stores/modules/forumService'
-import { getAuth, onAuthStateChanged } from 'firebase/auth'
+import { useRouter } from 'vue-router'
+import { getAuth, onAuthStateChanged, signOut } from 'firebase/auth'
 import { collection, onSnapshot, query, where, orderBy, doc, updateDoc, arrayUnion, getDoc, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from 'boot/firebase'
 
 const $q = useQuasar()
+const router = useRouter()
 const forum = useForumStore()
 const tab = ref('aulas')
 const auth = getAuth()
 const uid = ref(null)
+
+// Dados do professor
+const professor = ref({
+  name: '',
+  email: '',
+  avatar: ''
+})
 
 // Aulas do professor
 const classes = ref([])
@@ -204,10 +248,30 @@ async function responder(d) {
   } catch(e){ $q.notify({ type:'negative', message:'Falha ao responder', caption:e?.message }) }
 }
 
+function goToPerfil () {
+  router.push('/editar-perfil')
+}
+
+async function logout () {
+  try {
+    await signOut(auth)
+    router.push('/login')
+  } catch (e) {
+    $q.notify({ type: 'negative', message: 'Erro ao terminar sessão', caption: e?.message })
+  }
+}
+
 onMounted(() => {
-  onAuthStateChanged(auth, (user) => {
+  onAuthStateChanged(auth, async (user) => {
     uid.value = user?.uid || null
     if (!uid.value) return
+
+    // Preencher dados do professor a partir do utilizador autenticado
+    professor.value = {
+      name: user.displayName || 'Professor',
+      email: user.email || '',
+      avatar: user.photoURL || ''
+    }
 
     // Aulas do professor
     loadingClasses.value = true
@@ -242,4 +306,11 @@ onMounted(() => {
 
 <style scoped>
 .rounded-borders{ border-radius: 8px; }
+
+.professor-header {
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
 </style>

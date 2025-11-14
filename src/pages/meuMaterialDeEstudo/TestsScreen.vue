@@ -1,13 +1,22 @@
 <template>
   <div class="tests-layout">
+    <!-- Header igual ao Dashboard -->
+    <app-header @navigate="goTo" />
+
     <q-page class="main-content">
-      <div class="hero-section">
-        <div class="hero-content">
-          <h1 class="hero-title">
-            <span class="hero-highlight">Testes Práticos</span>
-            <span class="hero-subtitle">Teste seus conhecimentos</span>
-          </h1>
-        </div>
+      <!-- Tabs Dúvidas / Testes -->
+      <div class="menu-tabs">
+        <q-tabs
+          v-model="activeTab"
+          class="tabs-modern text-primary"
+          active-color="primary"
+          indicator-color="accent"
+          align="center"
+          dense
+        >
+          <q-tab name="doubts" label="Dúvidas" icon="help" class="tab-item" @click="goTo('doubts')" />
+          <q-tab name="tests" label="Testes" icon="assignment" class="tab-item" @click="goTo('tests')" />
+        </q-tabs>
       </div>
 
       <div class="tests-container" v-if="!currentTest">
@@ -18,14 +27,14 @@
         <q-inner-loading :showing="loading">
           <q-spinner-gears size="50px" color="primary" />
         </q-inner-loading>
-        <div v-if="!loading && tests.length === 0" class="empty-state text-center q-pa-md">
+        <div v-if="!loading && visibleTests.length === 0" class="empty-state text-center q-pa-md">
           <q-icon name="assignment" size="lg" color="grey-6" />
           <div class="empty-title q-mt-md">Nenhum teste disponível</div>
           <div class="empty-subtitle q-mt-sm">Nenhum teste foi encontrado. Tente novamente mais tarde.</div>
         </div>
         <div class="tests-grid" v-else-if="!loading">
           <q-card
-            v-for="test in tests"
+            v-for="test in visibleTests"
             :key="test.id"
             class="test-card"
             @click="startTest(test)"
@@ -149,18 +158,44 @@
       </q-dialog>
     </q-page>
 
-    <q-footer class="bottom-menu">
-      <q-tabs
-        v-model="activeTab"
-        dense
-        class="text-grey-8"
-        active-color="primary"
-        indicator-color="primary"
-      >
-        <q-tab name="doubts" icon="help" label="Dúvidas" @click="goTo('doubts')" />
-        <q-tab name="tests" icon="assignment" label="Testes" @click="goTo('tests')" />
-      </q-tabs>
-    </q-footer>
+    <!-- Footer compacto igual ao Dashboard -->
+    <footer class="app-footer-compact">
+      <div class="footer-icons-container">
+        <q-btn
+          flat
+          round
+          icon="home"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('dashboard')"
+        >
+          <q-tooltip>Dashboard</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="notifications"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('notificacoes')"
+        >
+          <q-tooltip>Notificações</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="person"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('profile')"
+        >
+          <q-tooltip>Perfil</q-tooltip>
+        </q-btn>
+      </div>
+    </footer>
   </div>
 </template>
 
@@ -169,7 +204,10 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useTestStore } from '../../stores/modules/testsQuizz'
-import { firebaseAuth } from '../../boot/firebase'
+import { firebaseAuth, db } from '../../boot/firebase'
+import { getAuth } from 'firebase/auth'
+import { collection, getDocs, query, where } from 'firebase/firestore'
+import AppHeader from 'components/AppHeader.vue'
 const MathJax = window.MathJax
 
 const router = useRouter()
@@ -191,6 +229,34 @@ const answers = ref({}) // { [questionId]: selectedIndex }
 const locked = ref({})  // { [questionId]: true }
 
 const tests = computed(() => testStore.tests)
+
+// Módulos comprados (ids) do usuário
+const purchasedModules = ref(new Set())
+
+// Lista de testes visíveis conforme regra de acesso:
+// - se não comprou o módulo: mostra apenas o teste do tema gratuito (primeiro tema do módulo)
+// - se comprou o módulo: mostra todos os testes daquele módulo
+const visibleTests = computed(() => {
+  const byModulo = {}
+  for (const t of tests.value) {
+    const key = t.moduloId || 'semModulo'
+    if (!byModulo[key]) byModulo[key] = []
+    byModulo[key].push(t)
+  }
+
+  const result = []
+  for (const [moduloId, list] of Object.entries(byModulo)) {
+    const sorted = [...list].sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')))
+    if (moduloId !== 'semModulo' && purchasedModules.value.has(moduloId)) {
+      // Módulo pago pelo estudante: mostra todos os testes
+      result.push(...sorted)
+    } else {
+      // Módulo não comprado: mostra apenas o teste do tema gratuito (primeiro)
+      if (sorted.length) result.push(sorted[0])
+    }
+  }
+  return result
+})
 const questionContainer = ref(null)
 const currentQuestion = computed(() => {
   const question = currentTest.value ? currentTest.value.questions[currentQuestionIndex.value] : null
@@ -234,6 +300,20 @@ const typeset = async () => {
   }
 }
 
+async function loadPurchasedModules() {
+  const auth = getAuth()
+  const user = auth.currentUser
+  if (!user) return
+
+  const snap = await getDocs(query(collection(db, 'userPurchases'), where('userId', '==', user.uid)))
+  const ids = new Set()
+  snap.docs.forEach(d => {
+    const data = d.data()
+    if (data.moduloId) ids.add(data.moduloId)
+  })
+  purchasedModules.value = ids
+}
+
 onMounted(async () => {
   if (!firebaseAuth.currentUser) {
     $q.notify({
@@ -251,6 +331,7 @@ onMounted(async () => {
     } else {
       await testStore.loadTests()
     }
+    await loadPurchasedModules()
     if (testStore.tests.length === 0) {
       $q.notify({
         type: 'warning',
@@ -455,6 +536,30 @@ const endTest = async () => {
   background-color: #f8f9fa;
 }
 
+/* Tabs de menu estilo "MÓDULOS" */
+.menu-tabs {
+  max-width: 1200px;
+  margin: 16px auto 0;
+  padding: 0 24px;
+}
+
+.tabs-modern {
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-radius: 12px;
+  overflow: hidden;
+
+  .tab-item {
+    font-weight: 500;
+    padding: 12px 24px;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: rgba(0,0,0,0.05);
+    }
+  }
+}
+
 .hero-section {
   background: linear-gradient(135deg, #2E7D32 0%, #66BB6A 100%);
   color: white;
@@ -605,15 +710,50 @@ const endTest = async () => {
   }
 }
 
-.bottom-menu {
+/* Footer compacto igual ao Dashboard */
+.app-footer-compact {
   background: white;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  border-top: 1px solid #e0e0e0;
+  padding: 12px 0;
   position: sticky;
   bottom: 0;
-  z-index: 1000;
+  z-index: 900;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
 
-  .q-tabs {
+  .footer-icons-container {
+    display: flex;
     justify-content: space-around;
+    align-items: center;
+    max-width: 100%;
+    padding: 8px 0;
+
+    .footer-icon-btn {
+      transition: all 0.3s ease;
+      position: relative;
+      color: #999 !important;
+
+      &:hover {
+        color: var(--q-primary) !important;
+        transform: scale(1.1);
+      }
+
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 3px;
+        background-color: var(--q-primary);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+      }
+
+      &:hover::after {
+        width: 24px;
+      }
+    }
   }
 }
 

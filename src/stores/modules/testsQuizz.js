@@ -30,6 +30,7 @@ export const useTestStore = defineStore('test', {
             progress: progressData.progress || 0,
             completed: progressData.completed || false,
             duration: temaData.duration || 30,
+            moduloId: temaData.moduloId || null,
             questions: [],
           })
         }
@@ -75,6 +76,7 @@ export const useTestStore = defineStore('test', {
               progress: progressData.progress || 0,
               completed: progressData.completed || false,
               duration: tema.duration || 30,
+              moduloId: tema.moduloId || null,
               questions: [],
             }
           })

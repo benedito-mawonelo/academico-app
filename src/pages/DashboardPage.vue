@@ -3,7 +3,7 @@
     <!-- Header Modernizado -->
     <header class="app-header">
       <div class="header-content">
-        <div class="user-profile" @click="goTo('profile')">
+        <div class="user-profile">
           <q-avatar size="52px" class="profile-avatar glow-on-hover">
             <template v-if="user.avatar">
               <img :src="user.avatar">
@@ -41,140 +41,58 @@
         </div>
 
         <div class="header-actions">
-          <!-- Botão de Notificações com Badge Animado -->
-          <div class="notification-wrapper">
-            <q-btn
-              flat
-              round
-              icon="notifications"
-              color="grey-8"
-              class="action-btn pulse-on-notification"
-              @click="toggleNotifications"
-            >
-              <q-badge
-                v-if="unreadNotifications.length"
-                color="red"
-                floating
-                rounded
-                class="notification-badge"
-                :class="{ 'pulse': unreadNotifications.length }"
-              >
-                {{ unreadNotifications.length }}
-              </q-badge>
-            </q-btn>
-
-            <q-menu
-              v-model="showNotifications"
-              anchor="bottom right"
-              self="top right"
-              class="notification-menu shadow-5"
-              transition-show="jump-down"
-              transition-hide="jump-up"
-            >
-              <q-list style="min-width: 350px" class="menu-list">
-                <q-item-label header class="text-weight-bold text-primary">
-                  <q-icon name="notifications" class="q-mr-sm" />
-                  Notificações
-                </q-item-label>
-
-                <template v-if="notifications.length > 0">
-                  <q-item
-                    v-for="(notification, index) in notifications.slice(0, 5)"
-                    :key="index"
-                    clickable
-                    v-ripple
-                    class="notification-item"
-                    :class="{ 'unread-notification': !notification.read }"
-                    @click="handleNotificationClick(notification)"
-                  >
-                    <q-item-section avatar>
-                      <q-icon
-                        :name="notification.icon"
-                        :color="notification.color"
-                        size="24px"
-                      />
-                    </q-item-section>
-                    <q-item-section>
-                      <q-item-label class="text-weight-medium">{{ notification.title }}</q-item-label>
-                      <q-item-label caption lines="2" class="text-grey-7">{{ notification.message }}</q-item-label>
-                    </q-item-section>
-                    <q-item-section side top>
-                      <q-item-label caption class="text-grey-5">{{ formatTime(notification.time) }}</q-item-label>
-                    </q-item-section>
-                  </q-item>
-
-                  <q-separator class="q-my-sm" />
-
-                  <q-item
-                    clickable
-                    v-ripple
-                    class="text-accent text-weight-medium"
-                    @click="goTo('notificacoes')"
-                  >
-                    <q-item-section avatar>
-                      <q-icon name="list_alt" color="accent" />
-                    </q-item-section>
-                    <q-item-section>Ver todas as notificações</q-item-section>
-                    <q-item-section side>
-                      <q-icon name="chevron_right" color="accent" />
-                    </q-item-section>
-                  </q-item>
-                </template>
-
-                <q-item v-else class="text-center q-py-lg">
-                  <q-item-section>
-                    <q-icon name="notifications_off" size="xl" color="grey-4" class="q-mb-sm" />
-                    <q-item-label class="text-grey-6">Nenhuma notificação</q-item-label>
-                  </q-item-section>
-                </q-item>
-              </q-list>
-            </q-menu>
-          </div>
-
-          <!-- Botão de Logout no lugar do menu -->
-          <q-btn
-            flat
-            round
-            icon="logout"
-            color="grey-8"
-            class="action-btn"
-            @click="showLogoutConfirm = true"
-          />
-
-          <q-dialog v-model="showLogoutConfirm" persistent>
-            <q-card>
-              <q-card-section class="text-h6">Confirmar saída</q-card-section>
-              <q-card-section>Tem certeza que deseja sair?</q-card-section>
-              <q-card-actions align="right">
-                <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
-                <q-btn color="negative" label="Sair" @click="doLogout" />
-              </q-card-actions>
-            </q-card>
-          </q-dialog>
         </div>
       </div>
     </header>
 
     <!-- Conteúdo Principal Modernizado -->
     <q-page class="main-content">
-      <div class="hero-section">
-        <div class="hero-content">
-          <h1 class="hero-title">
-            <span class="hero-highlight">Bem-vindo, {{ user.name?.split(' ')[0] || 'Estudante' }}</span>
-            <span class="hero-subtitle">O que vamos aprender hoje?</span>
-          </h1>
+      <q-carousel
+        v-model="carouselSlide"
+        animated
+        swipeable
+        infinite
+        class="hero-carousel"
+        :autoplay="carouselAutoplay"
+      >
+        <q-carousel-slide name="slide1" class="hero-section">
+          <div class="hero-content">
+            <h1 class="hero-title">
+              <span class="hero-highlight">Benvindo, {{ user.name?.split(' ')[0] || 'Estudante' }}!</span>
+              <span class="hero-subtitle">Vamos começar sua jornada de aprendizagem?</span>
+            </h1>
 
-          <q-banner inline-actions rounded class="bg-green-10 text-white q-mb-lg">
-            <template v-slot:avatar>
-              <q-icon name="stars" size="sm" />
-            </template>
-            Você tem {{ unreadNotifications.length }} notificação{{ unreadNotifications.length !== 1 ? 'es' : '' }} não lida{{ unreadNotifications.length !== 1 ? 's' : '' }}
-            <template v-slot:action>
-              <q-btn flat color="white" label="Ver" @click="goTo('notificacoes')" />
-            </template>
-          </q-banner>
-        </div>
-      </div>
+            <q-banner inline-actions rounded class="bg-green-10 text-white q-mb-lg">
+              <template v-slot:avatar>
+                <q-icon name="stars" size="sm" />
+              </template>
+              Você tem {{ unreadNotifications.length }} notificação{{ unreadNotifications.length !== 1 ? 'es' : '' }} não lida{{ unreadNotifications.length !== 1 ? 's' : '' }}
+              <template v-slot:action>
+                <q-btn flat color="white" label="Ver" @click="goTo('notificacoes')" />
+              </template>
+            </q-banner>
+          </div>
+        </q-carousel-slide>
+
+        <q-carousel-slide name="slide2" class="hero-section">
+          <div class="hero-content">
+            <h1 class="hero-title">
+              <span class="hero-highlight">Bem vindo de volta, {{ user.name?.split(' ')[0] || 'Estudante' }}!</span>
+              <span class="hero-subtitle">Pronto para continuar aprendendo?</span>
+            </h1>
+
+            <q-banner inline-actions rounded class="bg-blue-10 text-white q-mb-lg">
+              <template v-slot:avatar>
+                <q-icon name="trending_up" size="sm" />
+              </template>
+              Continue sua jornada de aprendizado e alcance novos objetivos!
+              <template v-slot:action>
+                <q-btn flat color="white" label="Ver progresso" @click="goTo('profile')" />
+              </template>
+            </q-banner>
+          </div>
+        </q-carousel-slide>
+      </q-carousel>
 
       <div class="dashboard-container">
         <div class="section-header">
@@ -186,127 +104,68 @@
           Selecione uma das opções abaixo para começar sua jornada de aprendizagem
         </p>
 
-        <div class="dashboard-grid">
-          <dashboard-card
+        <div class="nav-bars-container">
+          <div
             v-for="(card, index) in cards"
             :key="index"
-            :label="card.label"
-            :icon="card.icon"
-            :color="card.color"
-            :gradient="card.gradient"
-            :delay="index * 100"
+            class="nav-bar"
+            :class="`nav-bar-${index}`"
             @click="goTo(card.route)"
-          />
+          >
+            <div class="nav-bar-icon">
+              <q-icon :name="card.icon" size="lg" />
+            </div>
+            <div class="nav-bar-content">
+              <h3 class="nav-bar-title">{{ card.label }}</h3>
+              <p class="nav-bar-description">Acesse agora</p>
+            </div>
+            <div class="nav-bar-arrow">
+              <q-icon name="arrow_forward" size="md" />
+            </div>
+          </div>
         </div>
       </div>
     </q-page>
 
-    <!-- Footer Modernizado -->
-    <footer class="app-footer">
-      <div class="footer-wave">
-        <svg viewBox="0 0 1200 120" preserveAspectRatio="none">
-          <path d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z" opacity=".25" fill="currentColor"></path>
-          <path d="M0,0V15.81C13,36.92,27.64,56.86,47.69,72.05,99.41,111.27,165,111,224.58,91.58c31.15-10.15,60.09-26.07,89.67-39.8,40.92-19,84.73-46,130.83-49.67,36.26-2.85,70.9,9.42,98.6,31.56,31.77,25.39,62.32,62,103.63,73,40.44,10.79,81.35-6.69,119.13-24.28s75.16-39,116.92-43.05c59.73-5.85,113.28,22.88,168.9,38.84,30.2,8.66,59,6.17,87.09-7.5,22.43-10.89,48-26.93,60.65-49.24V0Z" opacity=".5" fill="currentColor"></path>
-          <path d="M0,0V5.63C149.93,59,314.09,71.32,475.83,42.57c43-7.64,84.23-20.12,127.61-26.46,59-8.63,112.48,12.24,165.56,35.4C827.93,77.22,886,95.24,951.2,90c86.53-7,172.46-45.71,248.8-84.81V0Z" fill="currentColor"></path>
-        </svg>
-      </div>
-
-      <div class="footer-content">
-        <div class="footer-main">
-          <div class="footer-brand">
-            <div class="logo-wrapper">
-              <q-icon name="school" size="xl" color="primary" />
-              <span class="logo-text">Mawonelo</span>
-            </div>
-            <p class="brand-slogan">
-              Transformando a educação através da tecnologia
-            </p>
-            <div class="footer-social">
-              <q-btn
-                flat
-                round
-                icon="facebook"
-                color="grey-7"
-                size="md"
-                class="social-icon"
-              />
-              <q-btn
-                flat
-                round
-                icon="twitter"
-                color="grey-7"
-                size="md"
-                class="social-icon"
-              />
-              <q-btn
-                flat
-                round
-                icon="instagram"
-                color="grey-7"
-                size="md"
-                class="social-icon"
-              />
-              <q-btn
-                flat
-                round
-                icon="linkedin"
-                color="grey-7"
-                size="md"
-                class="social-icon"
-              />
-            </div>
-          </div>
-
-          <div class="footer-links">
-            <div class="link-group">
-              <h3 class="link-title">Recursos</h3>
-              <a href="#" class="footer-link">Cadeiras</a>
-              <a href="#" class="footer-link">Livros Digitais</a>
-              <a href="#" class="footer-link">Loja Acadêmica</a>
-              <a href="#" class="footer-link">Exames</a>
-            </div>
-
-            <div class="link-group">
-              <h3 class="link-title">Suporte</h3>
-              <a href="#" class="footer-link">Central de Ajuda</a>
-              <a href="#" class="footer-link">Tutoriais</a>
-              <a href="#" class="footer-link">Contato</a>
-              <a href="#" class="footer-link">Feedback</a>
-            </div>
-
-            <div class="link-group">
-              <h3 class="link-title">Legal</h3>
-              <a href="#" class="footer-link">Termos de Uso</a>
-              <a href="#" class="footer-link">Política de Privacidade</a>
-              <a href="#" class="footer-link">Cookies</a>
-              <a href="#" class="footer-link">Licenças</a>
-            </div>
-          </div>
-        </div>
-
-        <div class="footer-bottom">
-          <div class="footer-copyright">
-            © 2025 Mawonelo - Todos os direitos reservados
-          </div>
-          <div class="footer-apps">
-            <q-btn
-              flat
-              round
-              icon="android"
-              color="grey-7"
-              size="sm"
-              class="app-icon"
-            />
-            <q-btn
-              flat
-              round
-              icon="apple"
-              color="grey-7"
-              size="sm"
-              class="app-icon"
-            />
-          </div>
-        </div>
+    <!-- Footer com 3 Ícones -->
+    <footer class="app-footer-compact">
+      <div class="footer-icons-container">
+        <q-btn
+          flat
+          round
+          icon="home"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('dashboard')"
+        >
+          <q-tooltip>Dashboard</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="notifications"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('notificacoes')"
+        >
+          <q-badge v-if="unreadNotifications.length" color="red" floating rounded>
+            {{ unreadNotifications.length }}
+          </q-badge>
+          <q-tooltip>Notificações</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="person"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('profile')"
+        >
+          <q-tooltip>Perfil</q-tooltip>
+        </q-btn>
       </div>
     </footer>
   </div>
@@ -315,9 +174,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import DashboardCard from 'components/dashboard/DashboardCard.vue'
 import { onAuthStateChanged } from 'firebase/auth'
-import { collection, onSnapshot, query, where, orderBy, updateDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore'
+import { collection, onSnapshot, query, where, orderBy, doc, getDoc } from 'firebase/firestore'
 import { firebaseAuth, db } from 'boot/firebase'
 
 const router = useRouter()
@@ -327,6 +185,9 @@ const user = ref({
   isPro: true,
   avatar: ''
 })
+
+const carouselSlide = ref('slide1')
+const carouselAutoplay = ref(5000) // 5 segundos
 
 onMounted(() => {
   onAuthStateChanged(firebaseAuth, async (authUser) => {
@@ -383,22 +244,8 @@ function capitalizeWords(text) {
   return text.replace(/\b\w/g, (char) => char.toUpperCase())
 }
 
-const showNotifications = ref(false)
-
 const notifications = ref([])
 let unsubNotifications = null
-const showLogoutConfirm = ref(false)
-
-function doLogout () {
-  try {
-    firebaseAuth.signOut()
-    router.push('/login')
-  } catch (e) {
-    console.error(e)
-  } finally {
-    showLogoutConfirm.value = false
-  }
-}
 
 const unreadNotifications = computed(() => {
   return notifications.value.filter(n => !n.read)
@@ -406,21 +253,21 @@ const unreadNotifications = computed(() => {
 
 const cards = ref([
   {
-    label: 'Encontrar Explicações em Vídeo',
+    label: 'Explorar Vídeos',
     icon: 'ondemand_video',
     color: 'primary',
     gradient: 'linear-gradient(135deg, #1976D2 0%, #2196F3 100%)',
     route: 'cadeiras'
   },
   {
-    label: 'Meu Material de Estudo',
+    label: 'Vídeos Baixados/Favoritos',
     icon: 'folder_special',
     color: 'cyan',
     gradient: 'linear-gradient(135deg, #00BCD4 0%, #4DD0E1 100%)',
     route: 'meu-material'
   },
   {
-    label: 'Fórum de Discussão',
+    label: 'Aulas de Dúvidas Online',
     icon: 'forum',
     color: 'brown',
     gradient: 'linear-gradient(135deg, #795548 0%, #A1887F 100%)',
@@ -435,56 +282,6 @@ const cards = ref([
   }
 ])
 
-async function toggleNotifications() {
-  showNotifications.value = !showNotifications.value
-  // Marcar como lidas no Firestore quando abrir
-  if (showNotifications.value) {
-    const unread = notifications.value.filter(n => !n.read)
-    for (const n of unread) {
-      try {
-        await updateDoc(doc(db, 'notifications', n.id), {
-          read: true,
-          readAt: serverTimestamp()
-        })
-      } catch (e) {
-        console.error('Erro ao marcar notificação como lida:', e)
-      }
-    }
-  }
-}
-
-async function handleNotificationClick(n) {
-  try {
-    if (!n.read) {
-      await updateDoc(doc(db, 'notifications', n.id), { read: true, readAt: serverTimestamp() })
-      n.read = true
-    }
-    if (n.linkPath) {
-      router.push({ path: n.linkPath, query: n.linkQuery || {} })
-      return
-    }
-    if (n.videoId) {
-      router.push({ path: '/video-player', query: { id: n.videoId } })
-      return
-    }
-  } catch (e) {
-    console.error('Erro ao abrir notificação:', e)
-  }
-}
-
-function formatTime(date) {
-  const now = new Date()
-  const diff = now - date
-
-  const minutes = Math.floor(diff / (1000 * 60))
-  if (minutes < 60) return `${minutes} min atrás`
-
-  const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours} h atrás`
-
-  const days = Math.floor(hours / 24)
-  return `${days} d atrás`
-}
 </script>
 
 <style lang="scss" scoped>
@@ -677,6 +474,13 @@ function formatTime(date) {
   margin: 0 auto;
 }
 
+/* Carousel */
+.hero-carousel {
+  :deep(.q-carousel__slide) {
+    padding: 0;
+  }
+}
+
 .hero-section {
   // background: linear-gradient(135deg, #1976D2 0%, #2196F3 100%);
   background: linear-gradient(135deg, #2E7D32 0%, #66BB6A 100%);
@@ -750,164 +554,213 @@ function formatTime(date) {
   max-width: 800px;
 }
 
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 24px;
-  margin: 0 auto;
+.nav-bars-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-top: 24px;
+}
 
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 16px;
+.nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 24px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  border-left: 4px solid transparent;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,0.1));
+    opacity: 0;
+    transition: opacity 0.3s ease;
   }
 
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
+  &:hover {
+    transform: translateX(8px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+    .nav-bar-icon {
+      transform: scale(1.1);
+    }
+
+    .nav-bar-arrow {
+      transform: translateX(4px);
+    }
+
+    &::before {
+      opacity: 1;
+    }
+  }
+
+  .nav-bar-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+  }
+
+  .nav-bar-content {
+    flex: 1;
+
+    .nav-bar-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #333;
+      margin: 0 0 4px 0;
+      transition: color 0.3s ease;
+    }
+
+    .nav-bar-description {
+      font-size: 0.9rem;
+      color: #999;
+      margin: 0;
+      transition: color 0.3s ease;
+    }
+  }
+
+  .nav-bar-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ccc;
+    transition: all 0.3s ease;
+  }
+
+  // Cores para cada barra
+  &.nav-bar-0 {
+    border-left-color: #1976d2;
+
+    .nav-bar-icon {
+      background: linear-gradient(135deg, rgba(25, 118, 210, 0.1) 0%, rgba(33, 150, 243, 0.1) 100%);
+      color: #1976d2;
+    }
+  }
+
+  &.nav-bar-1 {
+    border-left-color: #00bcd4;
+
+    .nav-bar-icon {
+      background: linear-gradient(135deg, rgba(0, 188, 212, 0.1) 0%, rgba(77, 208, 225, 0.1) 100%);
+      color: #00bcd4;
+    }
+  }
+
+  &.nav-bar-2 {
+    border-left-color: #795548;
+
+    .nav-bar-icon {
+      background: linear-gradient(135deg, rgba(121, 85, 72, 0.1) 0%, rgba(161, 136, 127, 0.1) 100%);
+      color: #795548;
+    }
+  }
+
+  &.nav-bar-3 {
+    border-left-color: #ff9800;
+
+    .nav-bar-icon {
+      background: linear-gradient(135deg, rgba(255, 152, 0, 0.1) 0%, rgba(255, 193, 7, 0.1) 100%);
+      color: #ff9800;
+    }
+  }
+
+  &:hover .nav-bar-arrow {
+    color: var(--q-primary);
   }
 }
 
-/* Footer Modernizado */
-.app-footer {
-  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-  color: white;
-  position: relative;
-  margin-top: 80px;
+@media (max-width: 600px) {
+  .nav-bar {
+    padding: 16px 16px;
+    gap: 12px;
 
-  .footer-wave {
-    position: absolute;
-    top: -60px;
-    left: 0;
-    width: 100%;
-    height: 60px;
-    overflow: hidden;
-
-    svg {
-      width: 100%;
-      height: 100%;
-      fill: #f8f9fa;
+    .nav-bar-icon {
+      width: 48px;
+      height: 48px;
     }
-  }
 
-  .footer-content {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 60px 24px 40px;
-  }
-
-  .footer-main {
-    display: grid;
-    grid-template-columns: 1fr 2fr;
-    gap: 60px;
-    margin-bottom: 40px;
-
-    @media (max-width: 768px) {
-      grid-template-columns: 1fr;
-      gap: 40px;
-    }
-  }
-
-  .footer-brand {
-    .logo-wrapper {
-      display: flex;
-      align-items: center;
-      margin-bottom: 16px;
-
-      .logo-text {
-        font-size: 1.5rem;
-        font-weight: 700;
-        margin-left: 12px;
+    .nav-bar-content {
+      .nav-bar-title {
+        font-size: 1rem;
       }
-    }
 
-    .brand-slogan {
-      opacity: 0.8;
-      margin-bottom: 24px;
-      line-height: 1.6;
-    }
-
-    .footer-social {
-      display: flex;
-      gap: 12px;
-
-      .social-icon {
-        transition: all 0.3s ease;
-
-        &:hover {
-          color: var(--q-primary) !important;
-          transform: translateY(-3px);
-        }
+      .nav-bar-description {
+        font-size: 0.85rem;
       }
     }
   }
+}
 
-  .footer-links {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 40px;
+/* Footer Compacto com 3 Ícones */
+.app-footer-compact {
+  background: white;
+  border-top: 1px solid #e0e0e0;
+  padding: 12px 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 900;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
 
-    @media (max-width: 768px) {
-      // grid-template-columns: 1fr;
-      gap: 30px;
-    }
-
-    .link-group {
-      .link-title {
-        font-size: 1.1rem;
-        font-weight: 600;
-        margin-bottom: 16px;
-        position: relative;
-        padding-bottom: 8px;
-
-        &::after {
-          content: '';
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          width: 40px;
-          height: 2px;
-          background-color: var(--q-primary);
-        }
-      }
-
-      .footer-link {
-        display: block;
-        color: rgba(255, 255, 255, 0.7);
-        margin-bottom: 12px;
-        transition: all 0.3s ease;
-        text-decoration: none;
-
-        &:hover {
-          color: white;
-          transform: translateX(5px);
-        }
-      }
-    }
-  }
-
-  .footer-bottom {
+  .footer-icons-container {
     display: flex;
-    justify-content: space-between;
+    justify-content: space-around;
     align-items: center;
-    padding-top: 30px;
-    border-top: 1px solid rgba(255, 255, 255, 0.1);
-    margin-top: 40px;
+    max-width: 100%;
+    padding: 8px 0;
 
-    .footer-copyright {
-      opacity: 0.7;
-      font-size: 0.9rem;
+    .footer-icon-btn {
+      transition: all 0.3s ease;
+      position: relative;
+      color: #999 !important;
+
+      &:hover {
+        color: var(--q-primary) !important;
+        transform: scale(1.1);
+      }
+
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 3px;
+        background-color: var(--q-primary);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+      }
+
+      &:hover::after {
+        width: 24px;
+      }
     }
+  }
+}
 
-    .footer-apps {
-      display: flex;
-      gap: 12px;
+@media (max-width: 600px) {
+  .app-footer-compact {
+    .footer-icons-container {
+      padding: 4px 0;
 
-      .app-icon {
-        transition: all 0.3s ease;
-
-        &:hover {
-          transform: scale(1.2);
-          color: white !important;
-        }
+      .footer-icon-btn {
+        padding: 12px 8px;
       }
     }
   }

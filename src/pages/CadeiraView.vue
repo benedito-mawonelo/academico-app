@@ -1,18 +1,59 @@
 <template>
-  <q-page class="cadeira-page">
-    <!-- Header Section -->
-    <div class="header-section">
-      <div class="header-overlay"></div>
+  <div class="app-layout">
+    <!-- Header Modernizado -->
+    <header class="app-header">
       <div class="header-content">
-        <h1 class="header-title animate__animated animate__fadeInDown">{{ cadeira.nome }}</h1>
-        <p class="header-subtitle animate__animated animate__fadeIn animate__delay-1s">
-          Explore vídeos, módulos, resumos e mais para dominar esta disciplina
-        </p>
-        <div class="q-mt-md">
-          <q-btn color="primary" unelevated icon="assignment" label="Ver Testes" @click="goToTests" />
+        <div class="user-profile">
+          <q-avatar size="52px" class="profile-avatar glow-on-hover">
+            <template v-if="user.avatar">
+              <img :src="user.avatar">
+            </template>
+            <q-icon v-else name="person" color="white" />
+          </q-avatar>
+          <div class="user-info">
+            <div class="user-name">
+              <span class="name-text">{{ capitalizeWords(user.name + " " + user.apelido) }}</span>
+              <q-icon
+                v-if="user.isPro"
+                name="verified"
+                size="18px"
+                color="accent"
+                class="q-ml-xs"
+              />
+              <q-badge
+                rounded
+                :color="user.isPro ? 'accent' : 'grey-6'"
+                class="plan-badge q-ml-xs"
+                text-color="white"
+              >
+                {{ user.isPro ? 'PRO' : 'BÁSICO' }}
+              </q-badge>
+            </div>
+            <div class="user-details">
+              <q-chip dense size="sm" color="primary" text-color="white" icon="school" class="q-mr-xs">
+                {{ capitalizeWords(user.curso) }}
+              </q-chip>
+              <q-chip dense size="sm" color="secondary" text-color="white" icon="apartment" class="q-mr-xs">
+                {{ user.instituicao?.toUpperCase() }}
+              </q-chip>
+            </div>
+          </div>
+        </div>
+
+        <div class="header-actions">
         </div>
       </div>
-    </div>
+    </header>
+
+    <!-- Page Content -->
+    <q-page class="cadeira-page">
+      <!-- Header Section -->
+      <div class="header-section">
+        <div class="header-overlay"></div>
+        <div class="header-content">
+          <h1 class="header-title animate__animated animate__fadeInDown">{{ cadeira.nome }}</h1>
+        </div>
+      </div>
 
     <!-- Tabs -->
     <q-tabs
@@ -23,74 +64,10 @@
       align="center"
       dense
     >
-      <q-tab name="videos" label="Vídeos" icon="play_circle" class="tab-item" />
       <q-tab name="modulos" label="Módulos" icon="view_module" class="tab-item" />
-      <!-- <q-tab name="resumos" label="Resumos" icon="description" class="tab-item" />
-      <q-tab name="cadernos" label="Cadernos" icon="folder" class="tab-item" />
-      <q-tab name="anotacoes" label="Anotações" icon="edit" class="tab-item" /> -->
     </q-tabs>
 
     <q-tab-panels v-model="tab" animated class="tab-panels">
-      <!-- Videos Tab -->
-      <q-tab-panel name="videos" class="tab-panel">
-        <div v-if="loading" class="loading-container">
-          <q-spinner-orbit color="primary" size="lg" />
-          <div class="loading-text">Carregando vídeos...</div>
-        </div>
-        <div v-else-if="videos.length === 0" class="empty-state text-center q-pa-xl">
-          <q-icon name="play_circle" size="lg" color="grey-6" />
-          <div class="empty-title q-mt-md">Nenhum vídeo disponível</div>
-          <div class="empty-subtitle q-mt-sm">Volte mais tarde para novos conteúdos</div>
-        </div>
-        <div v-else class="video-section">
-          <!-- Featured Video -->
-          <div class="featured-video q-mb-lg" v-if="videos.length > 0">
-            <q-video
-              :src="getEmbedUrl(videos[0].url)"
-              class="video-player animate__animated animate__fadeIn"
-              :ratio="16/9"
-            />
-            <div class="video-info">
-              <h3 class="video-title">{{ videos[0].titulo }}</h3>
-              <p class="video-description">{{ videos[0].descricao }}</p>
-            </div>
-          </div>
-          <!-- Video Grid -->
-          <div class="video-grid">
-            <q-card
-              v-for="(video, index) in videos"
-              :key="video.id"
-              class="video-card animate__animated"
-              :class="{ 'animate__fadeInUp': cardVisible[index] }"
-              v-intersection="onCardIntersection(index)"
-              @click="playVideo(video)"
-            >
-              <q-img
-                :src="getThumbnailUrl(video.url)"
-                :ratio="16/9"
-                class="video-thumbnail"
-                placeholder-src="https://via.placeholder.com/320x180"
-              >
-                <div v-if="isWatched(video.id)" class="absolute-top-left q-ma-sm">
-                  <q-chip dense color="positive" text-color="white" icon="check">Visto</q-chip>
-                </div>
-              </q-img>
-              <q-card-section class="row items-start no-wrap">
-                <div class="col">
-                  <div class="video-card-title">{{ video.titulo }}</div>
-                  <div class="video-card-description">{{ video.descricao }}</div>
-                  <q-linear-progress v-if="isWatched(video.id)" :value="1" color="positive" class="q-mt-sm" rounded />
-                </div>
-                <div class="col-auto">
-                  <q-btn flat round :icon="isFavorite(video.id) ? 'favorite' : 'favorite_border'" color="red"
-                        @click.stop="toggleFavorite(video)" />
-                </div>
-              </q-card-section>
-            </q-card>
-          </div>
-        </div>
-      </q-tab-panel>
-
       <!-- Módulos Tab -->
       <q-tab-panel name="modulos" class="tab-panel">
         <div v-if="loading" class="loading-container">
@@ -102,133 +79,179 @@
           <div class="empty-title q-mt-md">Nenhum módulo disponível</div>
           <div class="empty-subtitle q-mt-sm">Volte mais tarde para novos conteúdos</div>
         </div>
-        <div v-else class="modulos-grid">
-          <q-card
-            v-for="(modulo, index) in modulos"
-            :key="index"
-            class="modulo-card animate__animated"
-            :class="{ 'animate__fadeInUp': cardVisible[index + videos.length] }"
-            v-intersection="onCardIntersection(index + videos.length)"
-            @click="goToModulo(modulo.id)"
-          >
-            <q-card-section class="modulo-header">
-              <q-avatar color="secondary" text-color="white" icon="view_module" size="md" />
-            </q-card-section>
-            <q-card-section>
-              <div class="modulo-title">{{ modulo.nome }}</div>
-              <div class="modulo-description">{{ modulo.descricao }}</div>
-            </q-card-section>
-            <q-card-actions>
-              <q-btn flat color="primary" label="Explorar" icon-right="chevron_right" />
-            </q-card-actions>
-          </q-card>
-        </div>
-      </q-tab-panel>
+        <div v-else class="modulos-container">
+          <!-- Módulos com Temas -->
+          <div v-for="modulo in modulos" :key="modulo.id" class="modulo-section q-mb-lg">
+            <div class="modulo-header-title">
+              <q-icon name="view_module" color="primary" size="md" class="q-mr-md" />
+              <div class="modulo-header-content">
+                <h3 class="modulo-name">{{ modulo.nome }}</h3>
+                <p class="modulo-desc">{{ modulo.descricao }}</p>
+              </div>
+              <q-btn
+                v-if="canSeeTests(modulo)"
+                color="primary"
+                unelevated
+                icon="assignment"
+                label="Ver Testes"
+                @click="goToTests()"
+                size="sm"
+                class="modulo-test-btn"
+              />
+            </div>
 
-      <!-- Resumos Tab -->
-      <q-tab-panel name="resumos" class="tab-panel">
-        <div v-if="loading" class="loading-container">
-          <q-spinner-orbit color="primary" size="lg" />
-          <div class="loading-text">Carregando resumos...</div>
-        </div>
-        <div v-else-if="resumos.length === 0" class="empty-state text-center q-pa-xl">
-          <q-icon name="description" size="lg" color="grey-6" />
-          <div class="empty-title q-mt-md">Nenhum resumo disponível</div>
-          <div class="empty-subtitle q-mt-sm">Volte mais tarde para novos conteúdos</div>
-        </div>
-        <div v-else class="resumos-grid">
-          <q-card
-            v-for="(resumo, index) in resumos"
-            :key="resumo.id"
-            class="resumo-card animate__animated"
-            :class="{ 'animate__fadeInUp': cardVisible[index + videos.length + modulos.length] }"
-            v-intersection="onCardIntersection(index + videos.length + modulos.length)"
-            @click="openResumo(resumo.url)"
-          >
-            <q-card-section class="resumo-header">
-              <q-avatar color="secondary" text-color="white" icon="description" size="md" />
-            </q-card-section>
-            <q-card-section>
-              <div class="resumo-title">{{ resumo.titulo }}</div>
-              <div class="resumo-description">{{ resumo.descricao }}</div>
-            </q-card-section>
-            <q-card-actions>
-              <q-btn flat color="primary" label="Abrir" icon-right="open_in_new" />
-            </q-card-actions>
-          </q-card>
-        </div>
-      </q-tab-panel>
+            <!-- Temas dentro do Módulo -->
+            <div class="temas-grid">
+              <div
+                v-for="(tema, temaIndex) in getTemasDoModulo(modulo.id)"
+                :key="tema.id"
+                class="tema-card"
+                :class="{
+                  'tema-free': isTemaGratuito(temaIndex),
+                  'tema-locked': !isTemaGratuito(temaIndex) && !hasAccessToTema(tema.id, modulo.id),
+                  'tema-paid-access': !isTemaGratuito(temaIndex) && hasAccessToTema(tema.id, modulo.id)
+                }"
+                @click="handleTemaClick(tema, temaIndex, modulo.id)"
+              >
+                <div class="tema-overlay" v-if="!isTemaGratuito(temaIndex) && !hasAccessToTema(tema.id, modulo.id)">
+                  <q-icon name="lock" size="lg" color="white" />
+                  <p class="lock-text">Acesso Pago</p>
+                </div>
 
-      <!-- Cadernos Tab -->
-      <q-tab-panel name="cadernos" class="tab-panel">
-        <CadernoCard />
-      </q-tab-panel>
-
-      <!-- Anotações Tab -->
-      <q-tab-panel name="anotacoes" class="tab-panel">
-        <q-input
-          filled
-          type="textarea"
-          v-model="anotacaoTexto"
-          label="Suas anotações"
-          autogrow
-          rows="8"
-          class="anotacao-input animate__animated animate__fadeIn"
-          bg-color="white"
-        />
-        <q-btn
-          unelevated
-          color="primary"
-          label="Salvar Anotação"
-          icon="save"
-          class="anotacao-btn q-mt-md"
-          :loading="saving"
-          @click="salvarAnotacao"
-        />
+                <div class="tema-content">
+                  <div class="tema-icon">
+                    <q-icon name="school" size="lg" />
+                  </div>
+                  <h4 class="tema-name">{{ tema.nome }}</h4>
+                  <p class="tema-info">{{ tema.descricao || 'Sem descrição' }}</p>
+                  
+                  <div class="tema-badge-container">
+                    <q-badge v-if="isTemaGratuito(temaIndex)" color="positive" text-color="white" class="q-mt-sm">
+                      <q-icon name="free_cancellation" size="xs" class="q-mr-xs" />
+                      Grátis
+                    </q-badge>
+                    <q-badge v-else-if="hasAccessToTema(tema.id)" color="info" text-color="white" class="q-mt-sm">
+                      <q-icon name="verified" size="xs" class="q-mr-xs" />
+                      Acesso Liberado
+                    </q-badge>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </q-tab-panel>
     </q-tab-panels>
-  </q-page>
+    </q-page>
+
+    <!-- Footer com 3 Ícones -->
+    <footer class="app-footer-compact">
+      <div class="footer-icons-container">
+        <q-btn
+          flat
+          round
+          icon="home"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('dashboard')"
+        >
+          <q-tooltip>Dashboard</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="notifications"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('notificacoes')"
+        >
+          <q-badge v-if="unreadNotifications.length" color="red" floating rounded>
+            {{ unreadNotifications.length }}
+          </q-badge>
+          <q-tooltip>Notificações</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="person"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('profile')"
+        >
+          <q-tooltip>Perfil</q-tooltip>
+        </q-btn>
+      </div>
+    </footer>
+  </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { collection, getDocs, query, orderBy, where, doc, setDoc, deleteDoc } from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, where, doc, onSnapshot, getDoc, setDoc } from 'firebase/firestore'
 import { db } from 'boot/firebase'
 import { useQuasar } from 'quasar'
-import { getAuth } from 'firebase/auth'
-import CadernoCard from 'src/components/CadernoCard.vue'
+import { onAuthStateChanged } from 'firebase/auth'
+import { firebaseAuth } from 'boot/firebase'
 
 const $q = useQuasar()
 const router = useRouter()
 const route = useRoute()
 
-const tab = ref('videos') // Default to videos
+const tab = ref('modulos') // Default to modules
+const userPurchasedModules = ref(new Set()) // Módulos que o usuário desbloqueou
 const cadeiraId = route.params.id
 const cadeira = ref({ nome: 'Carregando...' })
 const modulos = ref([])
 const temas = ref([])
-const videos = ref([])
-const watchedSet = ref(new Set())
-const favoritesSet = ref(new Set())
-const resumos = ref([]) // Placeholder, assuming resumos collection
-const anotacaoTexto = ref('')
-const saving = ref(false)
 const loading = ref(false)
-const cardVisible = ref([])
+
+// User and notifications data
+const user = ref({
+  name: '',
+  isPro: true,
+  avatar: ''
+})
+const notifications = ref([])
+let unsubNotifications = null
+
+const unreadNotifications = computed(() => {
+  return notifications.value.filter(n => !n.read)
+})
+
+function canSeeTests(modulo) {
+  // Regra: testes só aparecem se o módulo for gratuito ou se o estudante tiver comprado o módulo
+  // Consideramos módulo gratuito se qualquer tema do módulo for gratuito (temaIndex === 0)
+  const hasFreeTema = getTemasDoModulo(modulo.id).length > 0 // pelo menos um tema existe (o primeiro é grátis)
+  const hasPaidAccess = userPurchasedModules.value.has(modulo.id)
+  return hasFreeTema || hasPaidAccess
+}
 
 function goToTests() {
   router.push(`/cadeiras/${cadeiraId}/tests`)
 }
 
+const goTo = (page) => {
+  router.push(`/${page}`)
+}
+
+function capitalizeWords(text) {
+  if (!text) return ''
+  return text.replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
 async function loadData() {
   loading.value = true
-  cardVisible.value = []
   try {
-    // Load cadeira
-    const cadeiraDoc = await getDocs(query(collection(db, 'cadeiras'), where('id', '==', cadeiraId)))
-    if (!cadeiraDoc.empty) {
-      cadeira.value = { id: cadeiraDoc.docs[0].id, ...cadeiraDoc.docs[0].data() }
+    // Load cadeira pelo ID do documento vindo da rota
+    const cadeiraDocRef = doc(db, 'cadeiras', cadeiraId)
+    const cadeiraDoc = await getDoc(cadeiraDocRef)
+
+    if (cadeiraDoc.exists()) {
+      cadeira.value = { id: cadeiraDoc.id, ...cadeiraDoc.data() }
     } else {
       cadeira.value = { nome: 'Cadeira desconhecida' }
       $q.notify({
@@ -252,31 +275,7 @@ async function loadData() {
     const temasSnapshot = await getDocs(temasQuery)
     temas.value = temasSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
 
-    // Generate modulo descriptions
-    modulos.value = modulos.value.map(modulo => {
-      const temasModulo = temas.value
-        .filter(tema => tema.moduloId === modulo.id)
-        .map(tema => tema.nome)
-        .join(', ') || 'Sem temas disponíveis'
-      return { ...modulo, descricao: temasModulo }
-    })
-
-    // Load videos
-    const temasIds = temas.value.map(tema => tema.id)
-    const videosQuery = temasIds.length
-      ? query(collection(db, 'videoaulas'), where('temaId', 'in', temasIds), orderBy('titulo'))
-      : query(collection(db, 'videoaulas'), where('temaId', '==', 'none'))
-    const videosSnapshot = await getDocs(videosQuery)
-    videos.value = videosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-
-    // Carregar progresso de vídeos do usuário
-    await loadWatched()
-    await loadFavorites()
-
-    // Initialize card visibility
-    cardVisible.value = new Array(videos.value.length + modulos.value.length + resumos.value.length).fill(false)
-
-    if (modulos.value.length === 0 && videos.value.length === 0) {
+    if (modulos.value.length === 0) {
       $q.notify({
         message: 'Nenhum conteúdo encontrado para esta cadeira.',
         color: 'warning',
@@ -296,141 +295,228 @@ async function loadData() {
   }
 }
 
+// Funções para verificar acesso aos temas
+function getTemasDoModulo(moduloId) {
+  return temas.value.filter(tema => tema.moduloId === moduloId)
+}
+
+function isTemaGratuito(temaIndex) {
+  return temaIndex === 0 // Primeiro tema de cada módulo é gratuito
+}
+
+function hasAccessToTema(temaId, moduloId) {
+  // Primeiro tema é sempre acessível (gratuito)
+  // Outros temas só são acessíveis se o módulo foi desbloqueado
+  return userPurchasedModules.value.has(moduloId)
+}
+
+async function handleTemaClick(tema, temaIndex, moduloId) {
+  // Primeiro tema é sempre gratuito
+  const temAcesso = isTemaGratuito(temaIndex) || hasAccessToTema(tema.id, moduloId)
+
+  if (!temAcesso) {
+    // Buscar nome do módulo para exibir na mensagem
+    const modulo = modulos.value.find(m => m.id === moduloId)
+    const nomeModulo = modulo ? modulo.nome : 'este módulo'
+    const valorSimulado = modulo?.preco || 1000 // valor apenas ilustrativo
+
+    // PASSO 1: escolher método de pagamento (simulado)
+    $q.dialog({
+      title: 'Simular pagamento',
+      message:
+        'Para acessar todos os temas de "' + nomeModulo + '", ' +
+        'escolha o método de pagamento a simular.',
+      options: {
+        type: 'radio',
+        model: 'MPESA',
+        items: [
+          { label: 'M-Pesa', value: 'MPESA', color: 'primary' },
+          { label: 'Emola', value: 'EMOLA', color: 'secondary' }
+        ]
+      },
+      cancel: true,
+      persistent: true,
+      class: 'dialog-modern'
+    }).onOk((metodoEscolhido) => {
+      // PASSO 2: formulário simples com número do telemóvel
+      $q.dialog({
+        title: 'Dados do pagamento',
+        message:
+          'Simulação de pagamento via ' + metodoEscolhido + '.\\n' +
+          'Valor: ' + valorSimulado + ' MT.\\n\\n' +
+          'Informe o número de telefone para concluir.',
+        prompt: {
+          model: '',
+          type: 'tel',
+          label: 'Número de telefone',
+          isValid: (val) => !!val && String(val).length >= 8,
+          filled: true
+        },
+        cancel: true,
+        ok: {
+          label: 'Confirmar pagamento',
+          color: 'primary',
+          unelevated: true
+        },
+        class: 'dialog-modern'
+      }).onOk(async (numeroTelefone) => {
+        const authUser = firebaseAuth.currentUser
+        if (!authUser) {
+          $q.notify({
+            type: 'negative',
+            message: 'Faça login para desbloquear o módulo',
+            position: 'top-right'
+          })
+          return
+        }
+
+        try {
+          const purchaseId = `${authUser.uid}_${moduloId}`
+          await setDoc(doc(collection(db, 'userPurchases'), purchaseId), {
+            userId: authUser.uid,
+            moduloId,
+            moduloNome: nomeModulo,
+            createdAt: new Date(),
+            simulatedPaymentMethod: metodoEscolhido,
+            simulatedPhone: numeroTelefone,
+            simulatedAmount: valorSimulado,
+            simulated: true
+          }, { merge: true })
+
+          // Atualiza o conjunto local de módulos comprados
+          userPurchasedModules.value = new Set([...userPurchasedModules.value, moduloId])
+
+          $q.notify({
+            type: 'positive',
+            message: `Módulo "${nomeModulo}" desbloqueado (pagamento simulado).`,
+            position: 'top-right'
+          })
+        } catch (e) {
+          console.error('Erro ao simular compra de módulo:', e)
+          $q.notify({
+            type: 'negative',
+            message: 'Erro ao desbloquear módulo',
+            position: 'top-right'
+          })
+        }
+      })
+    })
+    return
+  }
+
+  // Carregar vídeos do tema
+  try {
+    const videosQuery = query(collection(db, 'videoaulas'), where('temaId', '==', tema.id), orderBy('titulo'))
+    const videosSnapshot = await getDocs(videosQuery)
+    const videosDoTema = videosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+
+    if (videosDoTema.length === 0) {
+      $q.notify({
+        type: 'warning',
+        message: 'Nenhum vídeo disponível para este tema',
+        position: 'top-right'
+      })
+      return
+    }
+
+    // Pegar primeiro vídeo
+    const primeiroVideo = videosDoTema[0]
+    const embedUrl = getEmbedUrl(primeiroVideo.url)
+
+    // Navegar para o vídeo player com os parâmetros
+    router.push({
+      path: '/video-player',
+      query: {
+        id: primeiroVideo.id,
+        titulo: primeiroVideo.titulo,
+        descricao: primeiroVideo.descricao,
+        url: embedUrl,
+        temaId: tema.id,
+        nomeTema: tema.nome,
+        duracao: primeiroVideo.duracao || 0
+      }
+    })
+  } catch (error) {
+    console.error('Erro ao carregar vídeos do tema:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Erro ao carregar vídeos',
+      position: 'top-right'
+    })
+  }
+}
+
 function getEmbedUrl(url) {
   return url.includes('youtube.com') ? url.replace('watch?v=', 'embed/') : url
 }
 
-function getThumbnailUrl(url) {
-  if (url.includes('youtube.com')) {
-    const videoId = url.split('v=')[1]?.split('&')[0]
-    return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
-  }
-  return 'https://via.placeholder.com/320x180'
-}
 
-function onCardIntersection(index) {
-  return (entry) => {
-    if (entry.isIntersecting && !cardVisible.value[index]) {
-      cardVisible.value[index] = true
-    }
-  }
-}
-
-function goToModulo(id) {
-  router.push(`/cadeiras/${cadeiraId}/modulos/${id}`)
-}
-
-function isWatched(videoId) {
-  return watchedSet.value.has(videoId)
-}
-
-function isFavorite(videoId) {
-  return favoritesSet.value.has(videoId)
-}
-
-async function toggleFavorite(video) {
+async function loadUserPurchases(authUser) {
   try {
-    const auth = getAuth()
-    const user = auth.currentUser
-    if (!user) {
-      $q.notify({ type: 'warning', message: 'Faça login para favoritar' })
-      return
-    }
-    const favId = `${user.uid}_${video.id}`
-    const ref = doc(db, 'userFavorites', favId)
-    if (favoritesSet.value.has(video.id)) {
-      await deleteDoc(ref)
-      favoritesSet.value.delete(video.id)
-      $q.notify({ type: 'info', message: 'Removido dos favoritos' })
-    } else {
-      await setDoc(ref, {
-        userId: user.uid,
-        videoId: video.id,
-        titulo: video.titulo,
-        descricao: video.descricao,
-        url: video.url,
-        temaId: video.temaId || null,
-        duracao: video.duracao || 0,
-        createdAt: new Date()
-      }, { merge: true })
-      favoritesSet.value.add(video.id)
-      $q.notify({ type: 'positive', message: 'Adicionado aos favoritos' })
-    }
+    const snap = await getDocs(query(collection(db, 'userPurchases'), where('userId', '==', authUser.uid)))
+    const ids = new Set()
+    snap.docs.forEach(d => {
+      const data = d.data()
+      if (data.moduloId) ids.add(data.moduloId)
+    })
+    userPurchasedModules.value = ids
   } catch (e) {
-    console.error('Erro ao alternar favorito:', e)
-    $q.notify({ type: 'negative', message: 'Falha ao atualizar favorito' })
+    console.error('Erro ao carregar módulos comprados:', e)
+    userPurchasedModules.value = new Set()
   }
 }
 
-function playVideo(video) {
-  const embedUrl = getEmbedUrl(video.url)
-  router.push({
-    path: '/video-player',
-    query: {
-      id: video.id,
-      titulo: video.titulo,
-      descricao: video.descricao,
-      url: embedUrl,
-      duracao: video.duracao,
-      temaId: video.temaId
+onMounted(() => {
+  onAuthStateChanged(firebaseAuth, async (authUser) => {
+    if (authUser) {
+      const docRef = doc(db, 'users_academico', authUser.uid)
+      const docSnap = await getDoc(docRef)
+
+      if (docSnap.exists()) {
+        const data = docSnap.data()
+        user.value = {
+          name: data.name || '',
+          apelido: data.apelido || '',
+          instituicao: data.instituicao || '',
+          curso: data.curso || '',
+          avatar: data.image || '',
+          provincia: data.provincia || '',
+          telefone: data.telefone || '',
+          email: data.email || '',
+          isLoaded: true
+        }
+      } else {
+        console.error('Documento do usuário não encontrado.')
+      }
+
+      // Subscrever notificações em tempo real
+      if (unsubNotifications) unsubNotifications()
+      const qn = query(
+        collection(db, 'notifications'),
+        where('userId', '==', authUser.uid),
+        orderBy('createdAt', 'desc')
+      )
+      unsubNotifications = onSnapshot(qn, (snap) => {
+        notifications.value = snap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+          time: d.data().createdAt?.toDate ? d.data().createdAt.toDate() : new Date(),
+          read: !!d.data().read
+        }))
+      })
+
+      // Carregar módulos já comprados (simulação de pagamentos reais)
+      await loadUserPurchases(authUser)
+    } else {
+      notifications.value = []
+      if (unsubNotifications) unsubNotifications()
+      unsubNotifications = null
     }
   })
-}
 
-function openResumo(url) {
-  window.open(url, '_blank')
-}
-
-async function salvarAnotacao() {
-  saving.value = true
-  try {
-    await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate save
-    $q.notify({
-      message: 'Anotação salva com sucesso!',
-      color: 'positive',
-      position: 'top-right'
-    })
-    anotacaoTexto.value = ''
-  } catch (error) {
-    $q.notify({
-      type: 'negative',
-      message: 'Erro ao salvar anotação',
-      caption: error?.message || '',
-      position: 'top-right'
-    })
-  } finally {
-    saving.value = false
-  }
-}
-
-onMounted(async () => {
-  await loadData()
+  loadData()
 })
 
-async function loadWatched() {
-  try {
-    const auth = getAuth()
-    const user = auth.currentUser
-    if (!user) return
-    const snap = await getDocs(query(collection(db, 'playHistory'), where('userId', '==', user.uid)))
-    const ids = new Set(snap.docs.map(d => d.data().videoId))
-    watchedSet.value = ids
-  } catch (e) {
-    console.error('Erro ao carregar progresso de vídeos:', e)
-  }
-}
-
-async function loadFavorites() {
-  try {
-    const auth = getAuth()
-    const user = auth.currentUser
-    if (!user) return
-    const snap = await getDocs(query(collection(db, 'userFavorites'), where('userId', '==', user.uid)))
-    favoritesSet.value = new Set(snap.docs.map(d => d.data().videoId))
-  } catch (e) {
-    console.error('Erro ao carregar favoritos:', e)
-  }
-}
 </script>
 
 <style lang="scss" scoped>
@@ -456,7 +542,7 @@ async function loadFavorites() {
 
 .header-section {
   position: relative;
-  padding: 40px 24px;
+  padding: 16px 24px;
   background: linear-gradient(135deg, var(--q-primary) 0%, var(--q-secondary) 100%);
   color: #ffffff;
   text-align: center;
@@ -480,9 +566,9 @@ async function loadFavorites() {
   }
 
   .header-title {
-    font-size: 2.2rem;
+    font-size: 1.5rem;
     font-weight: 800;
-    margin-bottom: 12px;
+    margin-bottom: 0;
     text-shadow: 0 2px 6px rgba(0,0,0,0.2);
     animation-duration: 0.8s;
   }
@@ -781,6 +867,297 @@ async function loadFavorites() {
   &:hover {
     transform: scale(1.05);
     box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+  }
+}
+
+// Módulos Container
+.modulos-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.modulo-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  }
+
+  .modulo-header-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid rgba(0, 0, 0, 0.05);
+  }
+
+  .modulo-header-content {
+    flex: 1;
+  }
+
+  .modulo-name {
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--q-dark);
+  }
+
+  .modulo-desc {
+    margin: 8px 0 0 0;
+    font-size: 0.95rem;
+    color: var(--q-grey-8);
+    line-height: 1.5;
+  }
+}
+
+.temas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.tema-card {
+  position: relative;
+  border-radius: 12px;
+  background: #f8f9fa;
+  border: 2px solid rgba(0, 0, 0, 0.08);
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+
+  &.tema-free {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(76, 175, 80, 0.05) 100%);
+    border-color: rgba(76, 175, 80, 0.3);
+
+    &:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 8px 20px rgba(76, 175, 80, 0.2);
+      border-color: rgba(76, 175, 80, 0.5);
+    }
+  }
+
+  &.tema-paid-access {
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.1) 0%, rgba(33, 150, 243, 0.05) 100%);
+    border-color: rgba(33, 150, 243, 0.3);
+
+    &:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 8px 20px rgba(33, 150, 243, 0.2);
+      border-color: rgba(33, 150, 243, 0.5);
+    }
+  }
+
+  &.tema-locked {
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.02) 100%);
+    border-color: rgba(0, 0, 0, 0.15);
+    cursor: not-allowed;
+    opacity: 0.7;
+
+    &:hover {
+      transform: none;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+  }
+
+  .tema-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    border-radius: 10px;
+
+    .lock-text {
+      color: white;
+      font-weight: 600;
+      margin-top: 12px;
+      font-size: 0.9rem;
+    }
+  }
+
+  .tema-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+
+    .tema-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 12px;
+      background: rgba(0, 0, 0, 0.05);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--q-primary);
+      margin-bottom: 12px;
+      transition: all 0.3s ease;
+
+      .q-icon {
+        font-size: 1.8rem;
+      }
+    }
+
+    .tema-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--q-dark);
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .tema-info {
+      font-size: 0.85rem;
+      color: var(--q-grey-8);
+      margin-bottom: 12px;
+      line-height: 1.4;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tema-badge-container {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+  }
+}
+
+/* Header Modernizado */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+.app-header {
+  background: white;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  padding: 12px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  transition: all 0.3s ease;
+
+  .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .user-profile {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+
+    &:hover {
+      transform: translateX(5px);
+
+      .profile-avatar {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.2);
+      }
+    }
+
+    .profile-avatar {
+      transition: all 0.3s ease;
+      border: 2px solid white;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+
+      img {
+        object-fit: cover;
+      }
+    }
+
+    .user-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+
+      .user-name {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 600;
+        color: var(--q-dark);
+
+        .name-text {
+          font-size: 0.95rem;
+        }
+
+        .plan-badge {
+          font-size: 0.7rem;
+          padding: 2px 8px;
+        }
+      }
+
+      .user-details {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+    }
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+}
+
+/* Footer com 3 Ícones */
+.app-footer-compact {
+  background: white;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+  padding: 12px 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 1001;
+  margin-top: auto;
+
+  .footer-icons-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 40px;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+
+    .footer-icon-btn {
+      position: relative;
+      transition: all 0.3s ease;
+      color: var(--q-grey-8);
+
+      &:hover {
+        transform: scale(1.2) translateY(-4px);
+        color: var(--q-primary);
+      }
+
+      .q-badge {
+        font-size: 0.7rem;
+        padding: 0 4px;
+      }
+    }
   }
 }
 

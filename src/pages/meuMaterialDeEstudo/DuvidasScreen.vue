@@ -1,13 +1,23 @@
 <template>
   <div class="doubts-layout">
+    <!-- Header igual ao Dashboard -->
+    <app-header @navigate="goTo" />
+
+    <!-- Conteúdo principal -->
     <q-page class="main-content">
-      <div class="hero-section">
-        <div class="hero-content">
-          <h1 class="hero-title">
-            <span class="hero-highlight">Suas Dúvidas</span>
-            <span class="hero-subtitle">Acompanhe suas perguntas</span>
-          </h1>
-        </div>
+      <!-- Tabs Dúvidas / Testes -->
+      <div class="menu-tabs">
+        <q-tabs
+          v-model="activeTab"
+          class="tabs-modern text-primary"
+          active-color="primary"
+          indicator-color="accent"
+          align="center"
+          dense
+        >
+          <q-tab name="doubts" label="Dúvidas" icon="help" class="tab-item" @click="goTo('doubts')" />
+          <q-tab name="tests" label="Testes" icon="assignment" class="tab-item" @click="goTo('tests')" />
+        </q-tabs>
       </div>
 
       <div class="doubts-container">
@@ -50,18 +60,44 @@
       </div>
     </q-page>
 
-    <q-footer class="bottom-menu">
-      <q-tabs
-        v-model="activeTab"
-        dense
-        class="text-grey-8"
-        active-color="primary"
-        indicator-color="primary"
-      >
-        <q-tab name="doubts" icon="help" label="Dúvidas" @click="goTo('doubts')" />
-        <q-tab name="tests" icon="assignment" label="Testes" @click="goTo('tests')" />
-      </q-tabs>
-    </q-footer>
+    <!-- Footer compacto igual ao Dashboard -->
+    <footer class="app-footer-compact">
+      <div class="footer-icons-container">
+        <q-btn
+          flat
+          round
+          icon="home"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('dashboard')"
+        >
+          <q-tooltip>Dashboard</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="notifications"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('notificacoes')"
+        >
+          <q-tooltip>Notificações</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="person"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('profile')"
+        >
+          <q-tooltip>Perfil</q-tooltip>
+        </q-btn>
+      </div>
+    </footer>
   </div>
 </template>
 
@@ -71,6 +107,7 @@ import { useRouter } from 'vue-router'
 import { getAuth } from 'firebase/auth'
 import { collection, getDocs, query, where, orderBy, doc, getDoc } from 'firebase/firestore'
 import { db } from 'boot/firebase'
+import AppHeader from 'components/AppHeader.vue'
 
 const router = useRouter()
 const activeTab = ref('doubts')
@@ -128,6 +165,30 @@ onMounted(async () => {
   flex-direction: column;
   min-height: 100vh;
   background-color: #f8f9fa;
+}
+
+/* Tabs de menu estilo "MÓDULOS" */
+.menu-tabs {
+  max-width: 1200px;
+  margin: 16px auto 0;
+  padding: 0 24px;
+}
+
+.tabs-modern {
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-radius: 12px;
+  overflow: hidden;
+
+  .tab-item {
+    font-weight: 500;
+    padding: 12px 24px;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: rgba(0,0,0,0.05);
+    }
+  }
 }
 
 .hero-section {
@@ -207,15 +268,50 @@ onMounted(async () => {
   color: #666;
 }
 
-.bottom-menu {
+/* Footer compacto igual ao Dashboard */
+.app-footer-compact {
   background: white;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  border-top: 1px solid #e0e0e0;
+  padding: 12px 0;
   position: sticky;
   bottom: 0;
-  z-index: 1000;
+  z-index: 900;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
 
-  .q-tabs {
+  .footer-icons-container {
+    display: flex;
     justify-content: space-around;
+    align-items: center;
+    max-width: 100%;
+    padding: 8px 0;
+
+    .footer-icon-btn {
+      transition: all 0.3s ease;
+      position: relative;
+      color: #999 !important;
+
+      &:hover {
+        color: var(--q-primary) !important;
+        transform: scale(1.1);
+      }
+
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 3px;
+        background-color: var(--q-primary);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+      }
+
+      &:hover::after {
+        width: 24px;
+      }
+    }
   }
 }
 

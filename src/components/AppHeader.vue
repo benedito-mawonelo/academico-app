@@ -27,80 +27,16 @@
         </div>
       </div>
       <div class="header-actions">
-        <div class="notification-wrapper">
-          <q-btn flat round icon="notifications" color="white" class="action-btn pulse-on-notification" @click="toggleNotifications">
-            <q-badge v-if="unreadNotifications.length" color="red" floating rounded class="notification-badge" :class="{ 'pulse': unreadNotifications.length }">
-              {{ unreadNotifications.length }}
-            </q-badge>
-          </q-btn>
-          <q-menu v-model="showNotifications" anchor="bottom right" self="top right" class="notification-menu shadow-5" transition-show="fade" transition-hide="fade">
-            <q-list style="min-width: 350px" class="menu-list">
-              <q-item-label header class="text-weight-bold text-green">
-                <q-icon name="notifications" class="q-mr-sm" /> Notificações
-              </q-item-label>
-              <template v-if="notifications.length > 0">
-                <q-item v-for="(notification) in notifications.slice(0, 5)" :key="notification.id" clickable v-ripple class="notification-item" :class="{ 'unread-notification': !notification.read }" @click="handleNotificationClick(notification)">
-                  <q-item-section avatar>
-                    <q-icon :name="notification.icon" :color="notification.color" size="24px" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label class="text-weight-medium">{{ notification.title }}</q-item-label>
-                    <q-item-label caption lines="2" class="text-grey-7">{{ notification.message }}</q-item-label>
-                  </q-item-section>
-                  <q-item-section side top>
-                    <q-item-label caption class="text-grey-5">{{ formatTime(notification.time) }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-                <q-separator class="q-my-sm" />
-                <q-item clickable v-ripple class="text-green text-weight-medium" @click="$emit('navigate', 'notificacoes')">
-                  <q-item-section avatar>
-                    <q-icon name="list_alt" color="green" />
-                  </q-item-section>
-                  <q-item-section>Ver todas as notificações</q-item-section>
-                  <q-item-section side>
-                    <q-icon name="chevron_right" color="green" />
-                  </q-item-section>
-                </q-item>
-              </template>
-              <q-item v-else class="text-center q-py-lg">
-                <q-item-section>
-                  <q-icon name="notifications_off" size="xl" color="grey-4" class="q-mb-sm" />
-                  <q-item-label class="text-grey-6">Nenhuma notificação</q-item-label>
-                </q-item-section>
-              </q-item>
-            </q-list>
-          </q-menu>
-        </div>
-        <q-btn
-          flat
-          round
-          icon="logout"
-          color="white"
-          class="action-btn"
-          @click="showLogoutConfirm = true"
-        >
-          <q-tooltip>Sair</q-tooltip>
-        </q-btn>
-
-        <q-dialog v-model="showLogoutConfirm" persistent>
-          <q-card>
-            <q-card-section class="text-h6">Confirmar saída</q-card-section>
-            <q-card-section>Tem certeza que deseja sair?</q-card-section>
-            <q-card-actions align="right">
-              <q-btn flat label="Cancelar" color="grey-7" v-close-popup />
-              <q-btn color="negative" label="Sair" @click="doLogout" />
-            </q-card-actions>
-          </q-card>
-        </q-dialog>
+        <!-- Ícones de notificações e logout removidos conforme solicitado -->
       </div>
     </div>
   </header>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useQuasar, QAvatar, QBadge, QBtn, QIcon, QChip, QMenu, QList, QItem, QItemSection, QItemLabel, QSeparator } from 'quasar';
+import { useQuasar, QAvatar, QBadge, QIcon, QChip } from 'quasar';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { firebaseAuth, db } from 'boot/firebase';
@@ -118,40 +54,7 @@ const user = ref({
   isLoaded: false
 });
 
-const showNotifications = ref(false);
-const showLogoutConfirm = ref(false);
-
-const notifications = ref([
-  {
-    id: 1,
-    title: 'Novo Curso Disponível',
-    message: 'Curso de Inteligência Artificial já está na loja!',
-    icon: 'school',
-    color: 'green',
-    time: new Date(Date.now() - 1000 * 60 * 10),
-    read: false
-  },
-  {
-    id: 2,
-    title: 'Desconto Exclusivo',
-    message: '40% de desconto em todos os cursos de Tecnologia!',
-    icon: 'local_offer',
-    color: 'yellow',
-    time: new Date(Date.now() - 1000 * 60 * 60),
-    read: false
-  },
-  {
-    id: 3,
-    title: 'Certificado Gerado',
-    message: 'Seu certificado de Marketing Digital está disponível.',
-    icon: 'workspace_premium',
-    color: 'teal',
-    time: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    read: true
-  }
-]);
-
-const unreadNotifications = computed(() => notifications.value.filter(n => !n.read));
+// Estados de notificações/logout removidos (header simplificado)
 
 onMounted(async () => {
   onAuthStateChanged(firebaseAuth, async (authUser) => {
@@ -198,41 +101,11 @@ onMounted(async () => {
   });
 });
 
-function toggleNotifications() {
-  console.log('Toggling notifications, current state:', showNotifications.value);
-  showNotifications.value = !showNotifications.value;
-  if (showNotifications.value) {
-    notifications.value.forEach(n => (n.read = true));
-  }
-}
-
-
-function handleNotificationClick(notification) {
-  if (!notification.read) {
-    notification.read = true;
-  }
-}
-
-function formatTime(date) {
-  const now = new Date();
-  const diff = now - date;
-  const minutes = Math.floor(diff / (1000 * 60));
-  if (minutes < 60) return `${minutes} min atrás`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} h atrás`;
-  const days = Math.floor(hours / 24);
-  return `${days} d atrás`;
-}
-
 function capitalizeWords(text) {
   if (!text) return '';
   return text.replace(/\b\w/g, char => char.toUpperCase());
 }
 
-function doLogout() {
-  firebaseAuth.signOut();
-  router.push('/login');
-}
 </script>
 
 <style lang="scss" scoped>
