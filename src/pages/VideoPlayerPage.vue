@@ -9,7 +9,16 @@
         </div>
         <div v-else class="video-container shadow-4 rounded-borders q-mb-lg">
           <q-responsive :ratio="16/9">
-            <div id="yt-player" class="full-width full-height"></div>
+            <!-- Player único em HTML5 (vídeos AWS ou qualquer MP4/URL direta) -->
+            <video
+              ref="html5Video"
+              class="full-width full-height"
+              :src="video.url"
+              controls
+              autoplay
+              @ended="onHtml5Ended"
+              @play="onHtml5Play"
+            ></video>
           </q-responsive>
           <!-- Overlay de contagem para próximo vídeo -->
           <div v-if="countdownActive" class="countdown-overlay">
@@ -406,7 +415,7 @@
 
       <!-- Vídeos relacionados -->
       <div class="col-12 col-lg-4">
-        <div class="related-videos">
+      <div class="related-videos">
           <div class="text-h5 text-weight-bold text-green q-mb-md">Proximos Vídeos</div>
 
           <q-card
@@ -418,7 +427,7 @@
             @click="playOutro(item)"
           >
             <q-img
-              :src="`https://img.youtube.com/vi/${getVideoId(item.url)}/mqdefault.jpg`"
+              :src="item.thumbUrl || '/images/video-placeholder.png'"
               :ratio="16/9"
               class="rounded-borders"
             >
@@ -467,8 +476,7 @@ const progressSaved = ref(false)
 const playlist = ref([])
 const isFavorited = ref(false)
 const currentIndex = ref(0)
-const player = ref(null)
-const apiReady = ref(false)
+const html5Video = ref(null)
 const expandedDescription = ref(false)
 const downloadedVideos = ref(new Set())
 const user = ref({
@@ -600,8 +608,7 @@ const visibleQuestions = computed(() => {
   return showAllQuestions.value ? duvidas.value : duvidas.value.slice(0, 5)
 })
 
-// Usaremos o YouTube Iframe API; embedUrl não é necessário quando o player é criado via API
-
+// Player agora é apenas HTML5; não usamos mais YouTube Iframe API
 
 async function loadUserData(authUser) {
   if (authUser) {
@@ -1119,14 +1126,14 @@ function cancelarEdicaoResposta() {
   editRespostaTexto.value = ''
 }
 
-async function buildPlaylist() {
+async function buildPlaylist () {
   try {
     // Se houver temaId, montar playlist pelos vídeos do tema
     if (video.value.temaId) {
       const qSnap = await getDocs(query(collection(db, 'videoaulas'), where('temaId', '==', video.value.temaId)))
       const items = qSnap.docs.map(d => ({ id: d.id, ...d.data() }))
       // Ordena por 'ordem' se existir, senão por titulo
-      items.sort((a, b) => (a.ordem ?? 9999) - (b.ordem ?? 9999) || String(a.titulo||'').localeCompare(String(b.titulo||'')))
+      items.sort((a, b) => (a.ordem ?? 9999) - (b.ordem ?? 9999) || String(a.titulo || '').localeCompare(String(b.titulo || '')))
       playlist.value = items
       relacionados.value = items
       const idx = items.findIndex(v => v.id === video.value.id)
@@ -1145,13 +1152,7 @@ async function buildPlaylist() {
   }
 }
 
-function getVideoId(url) {
-  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
-  const match = url.match(regExp)
-  return (match && match[2].length === 11) ? match[2] : 'i-qT5n_5Mys'
-}
-
-function formatDate(date) {
+function formatDate (date) {
   if (!date || !(date instanceof Date)) {
     return 'Data inválida'
   }
@@ -1164,7 +1165,7 @@ function formatDate(date) {
   })
 }
 
-function capitalizeWords(text) {
+function capitalizeWords (text) {
   if (!text) return ''
   return text.replace(/\b\w/g, char => char.toUpperCase())
 }
@@ -1182,8 +1183,7 @@ onMounted(async () => {
     await loadVideoData()
     updateDescriptionStates() // Atualizar estado da descrição
     await buildPlaylist()
-    await ensureYT()
-    initPlayer()
+
     if (authUser) {
       await marcarComoAssistido(authUser.uid)
       // Verificar se é favorito
@@ -1198,59 +1198,15 @@ onMounted(async () => {
   })
 })
 
-function ensureYT() {
-  return new Promise((resolve) => {
-    if (window.YT && window.YT.Player) {
-      apiReady.value = true
-      return resolve(true)
-    }
-    const tag = document.createElement('script')
-    tag.src = 'https://www.youtube.com/iframe_api'
-    const firstScriptTag = document.getElementsByTagName('script')[0]
-    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag)
-    window.onYouTubeIframeAPIReady = () => {
-      apiReady.value = true
-      resolve(true)
-    }
-  })
-}
-
-function initPlayer() {
-  if (!apiReady.value) return
-  player.value = new window.YT.Player('yt-player', {
-    height: '390',
-    width: '640',
-    playerVars: {
-      rel: 0,
-      autoplay: 1,
-      controls: 1,
-      modestbranding: 1
-    },
-    events: {
-      onReady: onPlayerReady,
-      onStateChange: onStateChange
-    }
-  })
-}
-
-function onPlayerReady() {
-  const ids = playlist.value.map(v => getVideoId(v.url))
-  if (ids.length) {
-    player.value.cuePlaylist(ids, currentIndex.value)
-    player.value.playVideoAt(currentIndex.value)
+function onHtml5Ended () {
+  const next = currentIndex.value + 1
+  if (next < playlist.value.length) {
+    startRatingDialog(next)
   }
 }
 
-async function onStateChange(event) {
-  if (event.data === window.YT.PlayerState.ENDED) {
-    const next = currentIndex.value + 1
-    if (next < playlist.value.length) {
-      startRatingDialog(next)
-    }
-  } else if (event.data === window.YT.PlayerState.PLAYING) {
-    // Se o usuário voltar a reproduzir, cancela qualquer contagem
-    cancelCountdown()
-  }
+function onHtml5Play () {
+  cancelCountdown()
 }
 
 async function playAt(index) {
@@ -1258,7 +1214,16 @@ async function playAt(index) {
   currentIndex.value = index
   const item = playlist.value[index]
   if (!item) return
-  player.value.playVideoAt(index)
+
+  if (html5Video.value) {
+    html5Video.value.src = item.url
+    try {
+      await html5Video.value.play()
+    } catch (e) {
+      console.error('Erro ao reproduzir vídeo HTML5:', e)
+    }
+  }
+
   // Atualiza detalhes no painel
   video.value = {
     id: item.id,

@@ -17,6 +17,8 @@ import {
 
 const liveClassesRef = collection(db, 'live_classes')
 const participationsRef = collection(db, 'class_participations')
+const notificationsRef = collection(db, 'notifications')
+const usersRef = collection(db, 'users_academico')
 
 export const useForumStore = defineStore('forum', {
   state: () => ({
@@ -59,6 +61,36 @@ export const useForumStore = defineStore('forum', {
         }
 
         const docRef = await addDoc(liveClassesRef, newClass)
+
+        // Criar notificações para estudantes sobre a nova aula agendada
+        try {
+          const usersSnap = await getDocs(usersRef)
+          const batchPromises = []
+          usersSnap.forEach(uDoc => {
+            // Por enquanto, enviar notificação para todos os utilizadores da colecção users_academico.
+            // IMPORTANTE: para aparecer em /notificacoes, o id do documento deve ser igual ao uid do Firebase.
+            const targetUserId = uDoc.id
+
+            batchPromises.push(addDoc(notificationsRef, {
+              userId: targetUserId,
+              type: 'live_class_scheduled',
+              title: 'Nova aula ao vivo agendada',
+              message: `${newClass.title || 'Aula'} de ${newClass.subject || ''} foi agendada para ${newClass.scheduledFor.toLocaleString('pt-PT')}.`,
+              icon: 'sensors',
+              color: 'primary',
+              classId: docRef.id,
+              read: false,
+              createdAt: serverTimestamp(),
+              linkPath: '/forum/live',
+              // front-end pode montar rota final, ex.: /forum/live/:classId
+              linkQuery: { classId: docRef.id }
+            }))
+          })
+          await Promise.all(batchPromises)
+        } catch (notifyErr) {
+          console.warn('Falha ao criar notificações para aula agendada:', notifyErr)
+        }
+
         return { id: docRef.id, ...newClass }
       } catch (error) {
         console.error('Erro ao criar aula:', error)

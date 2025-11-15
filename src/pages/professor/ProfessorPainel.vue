@@ -69,7 +69,14 @@
       <q-tab-panel name="duvidas">
         <q-input dense outlined v-model="duvidaFilter" placeholder="Filtrar por texto ou vídeo" class="q-mb-sm" />
         <q-list bordered class="rounded-borders">
-          <q-item v-for="d in filteredDuvidas" :key="d.id" class="q-my-xs">
+          <q-item
+            v-for="d in filteredDuvidas"
+            :key="d.id"
+            class="q-my-xs"
+            clickable
+            v-ripple
+            @click="goToVideo(d)"
+          >
             <q-item-section>
               <q-item-label class="text-weight-medium">{{ d.texto }}</q-item-label>
               <q-item-label caption>
@@ -79,8 +86,22 @@
                 <q-chip dense color="positive" text-color="white">{{ d.respostas.length }} resposta(s)</q-chip>
               </div>
               <div class="row q-gutter-sm q-mt-sm">
-                <q-input v-model="respostasDraft[d.id]" outlined dense autogrow placeholder="Responder..." class="col" />
-                <q-btn color="primary" label="Enviar" dense @click="responder(d)" :disable="!respostasDraft[d.id]" />
+                <q-input
+                  v-model="respostasDraft[d.id]"
+                  outlined
+                  dense
+                  autogrow
+                  placeholder="Responder..."
+                  class="col"
+                  @click.stop
+                />
+                <q-btn
+                  color="primary"
+                  label="Enviar"
+                  dense
+                  @click.stop="responder(d)"
+                  :disable="!respostasDraft[d.id]"
+                />
               </div>
             </q-item-section>
           </q-item>
@@ -246,6 +267,41 @@ async function responder(d) {
     respostasDraft.value[d.id] = ''
     $q.notify({ type:'positive', message:'Resposta enviada' })
   } catch(e){ $q.notify({ type:'negative', message:'Falha ao responder', caption:e?.message }) }
+}
+
+async function goToVideo (d) {
+  try {
+    if (!d.videoId) {
+      $q.notify({ type: 'warning', message: 'Esta dúvida não está associada a nenhum vídeo.' })
+      return
+    }
+
+    const snap = await getDoc(doc(db, 'videoaulas', d.videoId))
+    if (!snap.exists()) {
+      $q.notify({ type: 'negative', message: 'Vídeo não encontrado.' })
+      return
+    }
+
+    const video = { id: snap.id, ...snap.data() }
+    const url = String(video.url || '')
+    const embedUrl = url.includes('youtube.com') ? url.replace('watch?v=', 'embed/') : url
+
+    router.push({
+      path: '/video-player',
+      query: {
+        id: video.id,
+        titulo: video.titulo || '',
+        descricao: video.descricao || '',
+        url: embedUrl,
+        temaId: video.temaId || '',
+        duracao: video.duracao || 0,
+        createdAt: (video.createdAt?.toDate ? video.createdAt.toDate() : new Date()).toISOString()
+      }
+    })
+  } catch (e) {
+    console.error('Erro ao abrir vídeo a partir da dúvida:', e)
+    $q.notify({ type: 'negative', message: 'Erro ao abrir vídeo', caption: e?.message })
+  }
 }
 
 function goToPerfil () {

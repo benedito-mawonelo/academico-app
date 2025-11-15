@@ -74,6 +74,9 @@
             :key="notificacao.id"
             class="notificacao-card q-mb-md"
             :class="{ 'not-read': !notificacao.read }"
+            clickable
+            v-ripple
+            @click="openNotification(notificacao)"
           >
             <q-card-section horizontal>
               <q-card-section class="col-12">
@@ -86,14 +89,14 @@
                 <div class="notificacao-message q-mt-sm text-grey-9">
                   {{ notificacao.message }}
                 </div>
-                <div v-if="notificacao.link" class="q-mt-md">
+                <div v-if="notificacao.link || notificacao.linkPath" class="q-mt-md">
                   <q-btn
                     flat
                     dense
                     color="primary"
                     label="Ver Mais"
                     icon-right="arrow_forward"
-                    :to="notificacao.link"
+                    @click.stop="openNotification(notificacao)"
                   />
                 </div>
               </q-card-section>
@@ -153,7 +156,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { collection, query, where, orderBy, onSnapshot, doc, getDoc } from 'firebase/firestore'
+import { collection, query, where, onSnapshot, doc, getDoc, updateDoc } from 'firebase/firestore'
 import { db } from 'boot/firebase'
 import { onAuthStateChanged } from 'firebase/auth'
 import { firebaseAuth } from 'boot/firebase'
@@ -184,6 +187,24 @@ function capitalizeWords(text) {
 
 function goTo(page) {
   router.push(`/${page}`)
+}
+
+async function openNotification (n) {
+  try {
+    // Marcar como lida (se ainda não estiver)
+    if (!n.read && n.id) {
+      await updateDoc(doc(db, 'notifications', n.id), { read: true })
+    }
+  } catch (e) {
+    console.warn('Falha ao marcar notificação como lida:', e)
+  }
+
+  // Navegar para o destino
+  if (n.linkPath) {
+    router.push({ path: n.linkPath, query: n.linkQuery || {} })
+  } else if (n.link) {
+    router.push(n.link)
+  }
 }
 
 function formatDate(date) {
@@ -228,8 +249,7 @@ function subscribeToNotifications(authUser) {
 
   const notificationsQuery = query(
     collection(db, 'notifications'),
-    where('userId', '==', authUser.uid),
-    orderBy('createdAt', 'desc')
+    where('userId', '==', authUser.uid)
   )
 
   unsubNotifications = onSnapshot(notificationsQuery, (snapshot) => {

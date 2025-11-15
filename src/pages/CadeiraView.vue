@@ -191,7 +191,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { collection, getDocs, query, orderBy, where, doc, onSnapshot, getDoc, setDoc } from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, where, doc, onSnapshot, getDoc, setDoc, addDoc } from 'firebase/firestore'
 import { db } from 'boot/firebase'
 import { useQuasar } from 'quasar'
 import { onAuthStateChanged } from 'firebase/auth'
@@ -382,6 +382,26 @@ async function handleTemaClick(tema, temaIndex, moduloId) {
             simulatedAmount: valorSimulado,
             simulated: true
           }, { merge: true })
+
+          // Criar notificação para o estudante sobre o desbloqueio do módulo
+          try {
+            await addDoc(collection(db, 'notifications'), {
+              userId: authUser.uid,
+              type: 'modulo_unlocked',
+              title: 'Módulo desbloqueado',
+              message: `Você desbloqueou o módulo "${nomeModulo}".`,
+              icon: 'lock_open',
+              color: 'positive',
+              moduloId,
+              simulated: true,
+              createdAt: new Date(),
+              read: false,
+              linkPath: '/cadeiras',
+              linkQuery: { id: cadeiraId }
+            })
+          } catch (notifyErr) {
+            console.warn('Falha ao criar notificação de módulo desbloqueado:', notifyErr)
+          }
 
           // Atualiza o conjunto local de módulos comprados
           userPurchasedModules.value = new Set([...userPurchasedModules.value, moduloId])

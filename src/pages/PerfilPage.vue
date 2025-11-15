@@ -439,7 +439,17 @@ function goBack() {
 }
 
 function goToModulo(moduloId) {
-  router.push(`/cadeiras/${moduloId}`);
+  const modulo = purchasedModules.value.find(m => m.id === moduloId);
+  if (!modulo || !modulo.cadeiraId) {
+    $q.notify({
+      type: 'negative',
+      message: 'Disciplina deste módulo não encontrada',
+      position: 'top'
+    });
+    return;
+  }
+
+  router.push(`/cadeiras/${modulo.cadeiraId}`);
 }
 
 function openEditDialog() {

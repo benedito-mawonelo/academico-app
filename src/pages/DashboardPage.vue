@@ -116,7 +116,18 @@
               <q-icon :name="card.icon" size="lg" />
             </div>
             <div class="nav-bar-content">
-              <h3 class="nav-bar-title">{{ card.label }}</h3>
+              <h3 class="nav-bar-title">
+                {{ card.label }}
+                <!-- index === 2 corresponde ao card "Aulas de Dúvidas Online" -->
+                <q-badge
+                  v-if="index === 2 && scheduledLiveClasses.length"
+                  color="red"
+                  rounded
+                  class="q-ml-sm"
+                >
+                  {{ scheduledLiveClasses.length }}
+                </q-badge>
+              </h3>
               <p class="nav-bar-description">Acesse agora</p>
             </div>
             <div class="nav-bar-arrow">
@@ -175,7 +186,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { onAuthStateChanged } from 'firebase/auth'
-import { collection, onSnapshot, query, where, orderBy, doc, getDoc } from 'firebase/firestore'
+import { collection, onSnapshot, query, where, doc, getDoc } from 'firebase/firestore'
 import { firebaseAuth, db } from 'boot/firebase'
 
 const router = useRouter()
@@ -216,8 +227,7 @@ onMounted(() => {
       if (unsubNotifications) unsubNotifications()
       const qn = query(
         collection(db, 'notifications'),
-        where('userId', '==', authUser.uid),
-        orderBy('createdAt', 'desc')
+        where('userId', '==', authUser.uid)
       )
       unsubNotifications = onSnapshot(qn, (snap) => {
         notifications.value = snap.docs.map(d => ({
@@ -227,10 +237,33 @@ onMounted(() => {
           read: !!d.data().read
         }))
       })
+
+      // Subscrever aulas ao vivo agendadas (todas) para mostrar o indicador
+      if (unsubScheduledClasses) unsubScheduledClasses()
+      const qClasses = query(
+        collection(db, 'live_classes'),
+        where('status', '==', 'scheduled')
+      )
+      unsubScheduledClasses = onSnapshot(qClasses, (snap) => {
+        const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+        // Ordena por scheduledFor no cliente, se existir
+        scheduledLiveClasses.value = rows.sort((a, b) => {
+          const aDate = a.scheduledFor?.toDate ? a.scheduledFor.toDate() : new Date(a.scheduledFor || 0)
+          const bDate = b.scheduledFor?.toDate ? b.scheduledFor.toDate() : new Date(b.scheduledFor || 0)
+          return aDate - bDate
+        })
+      }, (err) => {
+        console.error('Erro ao carregar aulas agendadas no Dashboard:', err)
+        scheduledLiveClasses.value = []
+      })
     } else {
       notifications.value = []
       if (unsubNotifications) unsubNotifications()
       unsubNotifications = null
+
+      scheduledLiveClasses.value = []
+      if (unsubScheduledClasses) unsubScheduledClasses()
+      unsubScheduledClasses = null
     }
   })
 })
@@ -246,6 +279,10 @@ function capitalizeWords(text) {
 
 const notifications = ref([])
 let unsubNotifications = null
+
+// Aulas ao vivo agendadas (para o indicador no card "Aulas de Dúvidas Online")
+const scheduledLiveClasses = ref([])
+let unsubScheduledClasses = null
 
 const unreadNotifications = computed(() => {
   return notifications.value.filter(n => !n.read)
