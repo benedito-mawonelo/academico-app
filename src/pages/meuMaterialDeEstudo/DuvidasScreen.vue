@@ -1,20 +1,29 @@
 <template>
   <div class="doubts-layout">
+    <!-- Header igual ao Dashboard -->
+    <app-header @navigate="goTo" />
+
+    <!-- Conteúdo principal -->
     <q-page class="main-content">
-      <div class="hero-section">
-        <div class="hero-content">
-          <h1 class="hero-title">
-            <span class="hero-highlight">Suas Dúvidas</span>
-            <span class="hero-subtitle">Acompanhe suas perguntas</span>
-          </h1>
-        </div>
+      <!-- Tabs Dúvidas / Testes -->
+      <div class="menu-tabs">
+        <q-tabs
+          v-model="activeTab"
+          class="tabs-modern text-primary"
+          active-color="primary"
+          indicator-color="accent"
+          align="center"
+          dense
+        >
+          <q-tab name="doubts" label="Dúvidas" icon="help" class="tab-item" @click="goTo('doubts')" />
+          <q-tab name="tests" label="Testes" icon="assignment" class="tab-item" @click="goTo('tests')" />
+        </q-tabs>
       </div>
 
       <div class="doubts-container">
         <div class="section-header">
           <q-icon name="help" color="primary" size="md" class="q-mr-sm" />
           <h2 class="section-title">Histórico de Dúvidas</h2>
-          <q-btn round color="primary" icon="add" @click="createDoubt" />
         </div>
         <q-list class="doubts-list" v-if="doubts.length">
           <q-item
@@ -22,15 +31,15 @@
             :key="doubt.id"
             clickable
             v-ripple
-            @click="goToDoubt(doubt.id)"
+            @click="goToVideoFromDoubt(doubt)"
             class="doubt-item"
           >
             <q-item-section avatar>
               <q-icon name="chat" color="primary" />
             </q-item-section>
             <q-item-section>
-              <q-item-label class="doubt-question">{{ doubt.question }}</q-item-label>
-              <q-item-label caption>Vídeo: {{ doubt.videoTitle }}</q-item-label>
+              <q-item-label class="doubt-question">{{ doubt.texto }}</q-item-label>
+              <q-item-label caption>Vídeo: {{ videoTitles[doubt.videoId] || 'Vídeo' }}</q-item-label>
               <q-item-label caption>{{ formatDate(doubt.date) }}</q-item-label>
             </q-item-section>
             <q-item-section side>
@@ -51,40 +60,103 @@
       </div>
     </q-page>
 
-    <q-footer class="bottom-menu">
-      <q-tabs
-        v-model="activeTab"
-        dense
-        class="text-grey-8"
-        active-color="primary"
-        indicator-color="primary"
-      >
-        <q-tab name="videos" icon="ondemand_video" label="Vídeos" @click="goTo('videos')" />
-        <q-tab name="favorites" icon="favorite" label="Favoritos" @click="goTo('favorites')" />
-        <q-tab name="notes" icon="edit_note" label="Notas" @click="goTo('notes')" />
-        <q-tab name="doubts" icon="help" label="Dúvidas" @click="goTo('doubts')" />
-        <q-tab name="tests" icon="assignment" label="Testes" @click="goTo('tests')" />
-      </q-tabs>
-    </q-footer>
+    <!-- Footer compacto igual ao Dashboard -->
+    <footer class="app-footer-compact">
+      <div class="footer-icons-container">
+        <q-btn
+          flat
+          round
+          icon="home"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('dashboard')"
+        >
+          <q-tooltip>Dashboard</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="notifications"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('notificacoes')"
+        >
+          <q-tooltip>Notificações</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="person"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('profile')"
+        >
+          <q-tooltip>Perfil</q-tooltip>
+        </q-btn>
+      </div>
+    </footer>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { getAuth } from 'firebase/auth'
+import { collection, getDocs, query, where, orderBy, doc, getDoc } from 'firebase/firestore'
+import { db } from 'boot/firebase'
+import AppHeader from 'components/AppHeader.vue'
 
 const router = useRouter()
 const activeTab = ref('doubts')
-
-const doubts = ref([
-  { id: 1, question: 'Como resolver equações quadráticas?', videoTitle: 'Matemática: Equações', date: new Date('2025-07-30'), resolved: false },
-  { id: 2, question: 'O que é energia cinética?', videoTitle: 'Física: Leis de Newton', date: new Date('2025-07-29'), resolved: true },
-])
+const doubts = ref([])
+const videoTitles = ref({})
 
 const goTo = (page) => router.push(`/${page}`)
-const goToDoubt = (id) => router.push(`/doubt/${id}`)
-const createDoubt = () => router.push('/doubt/new')
-const formatDate = (date) => date.toLocaleDateString('pt-BR')
+const formatDate = (date) => (date instanceof Date ? date.toLocaleDateString('pt-BR') : '')
+
+async function loadDoubts() {
+  const auth = getAuth()
+  const user = auth.currentUser
+  if (!user) return
+  // Carrega dúvidas do usuário atual
+  const q = query(collection(db, 'duvidas'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'))
+  const snap = await getDocs(q)
+  const items = snap.docs.map(d => {
+    const data = d.data()
+    const date = data.createdAt?.toDate ? data.createdAt.toDate() : new Date()
+    const resolvedComputed = !!(data.resolved || (Array.isArray(data.respostas) && data.respostas.length > 0))
+    return { id: d.id, ...data, date, resolved: resolvedComputed }
+  })
+  doubts.value = items
+  // Carrega títulos dos vídeos relacionados (em batches de 10)
+  const ids = [...new Set(items.map(i => i.videoId).filter(Boolean))]
+  const chunk = (arr, size) => arr.reduce((acc, _, i) => (i % size ? acc : [...acc, arr.slice(i, i + size)]), [])
+  const batches = chunk(ids, 10)
+  const map = {}
+  for (const batch of batches) {
+    // Firestore não permite 'in' com doc id direto sem campo; buscar individualmente por simplicidade
+    for (const vid of batch) {
+      const vref = doc(collection(db, 'videoaulas'), vid)
+      const vsnap = await getDoc(vref)
+      if (vsnap.exists()) {
+        map[vid] = vsnap.data().titulo || 'Vídeo'
+      }
+    }
+  }
+  videoTitles.value = map
+}
+
+function goToVideoFromDoubt(d) {
+  // Navega para o player do vídeo da dúvida
+  router.push({ path: '/video-player', query: { id: d.videoId } })
+}
+
+onMounted(async () => {
+  await loadDoubts()
+})
 </script>
 
 <style lang="scss" scoped>
@@ -93,6 +165,30 @@ const formatDate = (date) => date.toLocaleDateString('pt-BR')
   flex-direction: column;
   min-height: 100vh;
   background-color: #f8f9fa;
+}
+
+/* Tabs de menu estilo "MÓDULOS" */
+.menu-tabs {
+  max-width: 1200px;
+  margin: 16px auto 0;
+  padding: 0 24px;
+}
+
+.tabs-modern {
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-radius: 12px;
+  overflow: hidden;
+
+  .tab-item {
+    font-weight: 500;
+    padding: 12px 24px;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: rgba(0,0,0,0.05);
+    }
+  }
 }
 
 .hero-section {
@@ -172,15 +268,50 @@ const formatDate = (date) => date.toLocaleDateString('pt-BR')
   color: #666;
 }
 
-.bottom-menu {
+/* Footer compacto igual ao Dashboard */
+.app-footer-compact {
   background: white;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  border-top: 1px solid #e0e0e0;
+  padding: 12px 0;
   position: sticky;
   bottom: 0;
-  z-index: 1000;
+  z-index: 900;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
 
-  .q-tabs {
+  .footer-icons-container {
+    display: flex;
     justify-content: space-around;
+    align-items: center;
+    max-width: 100%;
+    padding: 8px 0;
+
+    .footer-icon-btn {
+      transition: all 0.3s ease;
+      position: relative;
+      color: #999 !important;
+
+      &:hover {
+        color: var(--q-primary) !important;
+        transform: scale(1.1);
+      }
+
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 3px;
+        background-color: var(--q-primary);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+      }
+
+      &:hover::after {
+        width: 24px;
+      }
+    }
   }
 }
 

@@ -1,13 +1,22 @@
 <template>
   <div class="tests-layout">
+    <!-- Header igual ao Dashboard -->
+    <app-header @navigate="goTo" />
+
     <q-page class="main-content">
-      <div class="hero-section">
-        <div class="hero-content">
-          <h1 class="hero-title">
-            <span class="hero-highlight">Testes Práticos</span>
-            <span class="hero-subtitle">Teste seus conhecimentos</span>
-          </h1>
-        </div>
+      <!-- Tabs Dúvidas / Testes -->
+      <div class="menu-tabs">
+        <q-tabs
+          v-model="activeTab"
+          class="tabs-modern text-primary"
+          active-color="primary"
+          indicator-color="accent"
+          align="center"
+          dense
+        >
+          <q-tab name="doubts" label="Dúvidas" icon="help" class="tab-item" @click="goTo('doubts')" />
+          <q-tab name="tests" label="Testes" icon="assignment" class="tab-item" @click="goTo('tests')" />
+        </q-tabs>
       </div>
 
       <div class="tests-container" v-if="!currentTest">
@@ -18,14 +27,14 @@
         <q-inner-loading :showing="loading">
           <q-spinner-gears size="50px" color="primary" />
         </q-inner-loading>
-        <div v-if="!loading && tests.length === 0" class="empty-state text-center q-pa-md">
+        <div v-if="!loading && visibleTests.length === 0" class="empty-state text-center q-pa-md">
           <q-icon name="assignment" size="lg" color="grey-6" />
           <div class="empty-title q-mt-md">Nenhum teste disponível</div>
           <div class="empty-subtitle q-mt-sm">Nenhum teste foi encontrado. Tente novamente mais tarde.</div>
         </div>
         <div class="tests-grid" v-else-if="!loading">
           <q-card
-            v-for="test in tests"
+            v-for="test in visibleTests"
             :key="test.id"
             class="test-card"
             @click="startTest(test)"
@@ -57,10 +66,10 @@
           <q-btn flat round icon="close" @click="endTest" />
         </div>
         <div class="quiz-content">
-          <q-card class="question-card" v-if="currentQuestion">
+<q-card class="question-card" v-if="currentQuestion" ref="questionContainer">
             <q-card-section>
               <div class="question-text">
-                <span v-if="isLatex(currentQuestion.texto)" v-html="renderKatex(currentQuestion.texto)"></span>
+<span v-if="isLatex(currentQuestion.texto)" v-html="renderMath(currentQuestion.texto)"></span>
                 <span v-else>{{ currentQuestion.texto }}</span>
               </div>
               <q-list class="options-list">
@@ -75,7 +84,7 @@
                 >
                   <q-item-section>
                     <q-item-label>
-                      <span v-if="isLatex(option)" v-html="renderKatex(option)"></span>
+<span v-if="isLatex(option)" v-html="renderMath(option)"></span>
                       <span v-else>{{ option }}</span>
                     </q-item-label>
                   </q-item-section>
@@ -83,25 +92,36 @@
               </q-list>
               <div v-if="showResult && selectedOption !== null && currentQuestion.opcoes[selectedOption] !== currentQuestion.respostaCorreta" class="explanation">
                 <strong>Explicação:</strong>
-                <span v-if="isLatex(currentQuestion.explicacao)" v-html="renderKatex(currentQuestion.explicacao)"></span>
+<span v-if="isLatex(currentQuestion.explicacao)" v-html="renderMath(currentQuestion.explicacao)"></span>
                 <span v-else>{{ currentQuestion.explicacao }}</span>
               </div>
             </q-card-section>
-            <q-card-actions align="right" class="quiz-actions">
-              <q-btn
-                v-if="!showResult"
-                :disable="selectedOption === null"
-                color="primary"
-                label="Confirmar"
-                @click="submitAnswer"
-              />
-              <q-btn
-                v-if="showResult"
-                flat
-                color="primary"
-                :label="currentQuestionIndex < currentTest.questions.length - 1 ? 'Próxima' : 'Finalizar'"
-                @click="nextQuestion"
-              />
+            <q-card-actions align="between" class="quiz-actions">
+              <div>
+                <q-btn
+                  v-if="currentQuestionIndex > 0"
+                  flat
+                  color="primary"
+                  label="Anterior"
+                  @click="prevQuestion"
+                />
+              </div>
+              <div>
+                <q-btn
+                  v-if="!showResult"
+                  :disable="selectedOption === null"
+                  color="primary"
+                  label="Confirmar"
+                  @click="submitAnswer"
+                />
+                <q-btn
+                  v-if="showResult"
+                  flat
+                  color="primary"
+                  :label="currentQuestionIndex < currentTest.questions.length - 1 ? 'Próxima' : 'Finalizar'"
+                  @click="nextQuestion"
+                />
+              </div>
             </q-card-actions>
           </q-card>
           <div v-else class="empty-state text-center q-pa-md">
@@ -138,33 +158,60 @@
       </q-dialog>
     </q-page>
 
-    <q-footer class="bottom-menu">
-      <q-tabs
-        v-model="activeTab"
-        dense
-        class="text-grey-8"
-        active-color="primary"
-        indicator-color="primary"
-      >
-        <q-tab name="videos" icon="ondemand_video" label="Vídeos" @click="goTo('videos')" />
-        <q-tab name="favorites" icon="favorite" label="Favoritos" @click="goTo('favorites')" />
-        <q-tab name="notes" icon="edit_note" label="Notas" @click="goTo('notes')" />
-        <q-tab name="doubts" icon="help" label="Dúvidas" @click="goTo('doubts')" />
-        <q-tab name="tests" icon="assignment" label="Testes" @click="goTo('tests')" />
-      </q-tabs>
-    </q-footer>
+    <!-- Footer compacto igual ao Dashboard -->
+    <footer class="app-footer-compact">
+      <div class="footer-icons-container">
+        <q-btn
+          flat
+          round
+          icon="home"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('dashboard')"
+        >
+          <q-tooltip>Dashboard</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="notifications"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('notificacoes')"
+        >
+          <q-tooltip>Notificações</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="person"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('profile')"
+        >
+          <q-tooltip>Perfil</q-tooltip>
+        </q-btn>
+      </div>
+    </footer>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { useTestStore } from '../../stores/modules/testsQuizz'
-import { firebaseAuth } from '../../boot/firebase'
-import katex from 'katex'
+import { firebaseAuth, db } from '../../boot/firebase'
+import { getAuth } from 'firebase/auth'
+import { collection, getDocs, query, where } from 'firebase/firestore'
+import AppHeader from 'components/AppHeader.vue'
+const MathJax = window.MathJax
 
 const router = useRouter()
+const route = useRoute()
 const $q = useQuasar()
 const testStore = useTestStore()
 
@@ -177,8 +224,40 @@ const showSuccessDialog = ref(false)
 const showResultDialog = ref(false)
 const score = ref(0)
 const loading = ref(false)
+// Novo: mapear respostas e travas por questão
+const answers = ref({}) // { [questionId]: selectedIndex }
+const locked = ref({})  // { [questionId]: true }
 
 const tests = computed(() => testStore.tests)
+
+// Módulos comprados (ids) do usuário
+const purchasedModules = ref(new Set())
+
+// Lista de testes visíveis conforme regra de acesso:
+// - se não comprou o módulo: mostra apenas o teste do tema gratuito (primeiro tema do módulo)
+// - se comprou o módulo: mostra todos os testes daquele módulo
+const visibleTests = computed(() => {
+  const byModulo = {}
+  for (const t of tests.value) {
+    const key = t.moduloId || 'semModulo'
+    if (!byModulo[key]) byModulo[key] = []
+    byModulo[key].push(t)
+  }
+
+  const result = []
+  for (const [moduloId, list] of Object.entries(byModulo)) {
+    const sorted = [...list].sort((a, b) => String(a.title || '').localeCompare(String(b.title || '')))
+    if (moduloId !== 'semModulo' && purchasedModules.value.has(moduloId)) {
+      // Módulo pago pelo estudante: mostra todos os testes
+      result.push(...sorted)
+    } else {
+      // Módulo não comprado: mostra apenas o teste do tema gratuito (primeiro)
+      if (sorted.length) result.push(sorted[0])
+    }
+  }
+  return result
+})
+const questionContainer = ref(null)
 const currentQuestion = computed(() => {
   const question = currentTest.value ? currentTest.value.questions[currentQuestionIndex.value] : null
   console.log('Questão atual:', question)
@@ -200,24 +279,39 @@ const isLatex = (text) => {
   return /\\[\w]+(?:{[^{}]*})*|\$.*\$|\\\[.*\\\]|[_^]/.test(text)
 }
 
-const renderKatex = (text) => {
-  if (!text || typeof text !== 'string') {
-    console.warn('Texto inválido para renderKatex:', text)
-    return text || ''
-  }
+const hasDelimiters = (t) => /\$[\s\S]*\$|\\\([\s\S]*\\\)|\\\[[\s\S]*\\\]/.test(t)
+const renderMath = (text) => {
+  if (!text || typeof text !== 'string') return text || ''
+  return hasDelimiters(text) ? text : `\\(${text}\\)`
+}
+
+const typeset = async () => {
+  await nextTick()
   try {
-    // Normaliza barras invertidas para garantir consistência
-    const normalizedText = text.replace(/\\+/g, '\\')
-    console.log(`Renderizando KaTeX: "${normalizedText}"`)
-    return katex.renderToString(normalizedText, {
-      throwOnError: false,
-      displayMode: false,
-      strict: false,
-    })
-  } catch (error) {
-    console.error('Erro ao renderizar KaTeX:', error.message, 'Texto:', text)
-    return text // Fallback para texto simples se houver erro
+    if (MathJax && typeof MathJax.typesetPromise === 'function') {
+      if (questionContainer.value) {
+        await MathJax.typesetPromise([questionContainer.value.$el || questionContainer.value])
+      } else {
+        await MathJax.typesetPromise()
+      }
+    }
+  } catch (e) {
+    console.error('MathJax typeset error:', e)
   }
+}
+
+async function loadPurchasedModules() {
+  const auth = getAuth()
+  const user = auth.currentUser
+  if (!user) return
+
+  const snap = await getDocs(query(collection(db, 'userPurchases'), where('userId', '==', user.uid)))
+  const ids = new Set()
+  snap.docs.forEach(d => {
+    const data = d.data()
+    if (data.moduloId) ids.add(data.moduloId)
+  })
+  purchasedModules.value = ids
 }
 
 onMounted(async () => {
@@ -231,7 +325,13 @@ onMounted(async () => {
   }
   loading.value = true
   try {
-    await testStore.loadTests()
+    const cadeiraId = route.params.id
+    if (cadeiraId) {
+      await testStore.loadTestsByCadeira(cadeiraId)
+    } else {
+      await testStore.loadTests()
+    }
+    await loadPurchasedModules()
     if (testStore.tests.length === 0) {
       $q.notify({
         type: 'warning',
@@ -249,7 +349,12 @@ onMounted(async () => {
     })
   } finally {
     loading.value = false
+    await typeset()
   }
+})
+
+watch([currentQuestion, selectedOption, showResult], async () => {
+  await typeset()
 })
 
 const goTo = (page) => router.push(`/${page}`)
@@ -272,10 +377,25 @@ const startTest = async (test) => {
       throw new Error('Teste não encontrado após carregamento')
     }
     console.log('Teste carregado:', currentTest.value)
+
+    // Inicializa travas com base no progresso anterior
+    locked.value = {}
+    if (progressData?.answeredQuestions?.length) {
+      for (const qId of progressData.answeredQuestions) {
+        locked.value[qId] = true
+      }
+    }
+
     if (progressData.completed) {
-      currentQuestionIndex.value = currentTest.value.questions.length - 1
-      score.value = progressData.score || 0
-      showResultDialog.value = true
+      // Se o teste foi concluído anteriormente, permitir repetir imediatamente.
+      await testStore.resetUserProgress(test.id)
+      answers.value = {}
+      locked.value = {}
+      currentQuestionIndex.value = 0
+      selectedOption.value = null
+      showResult.value = false
+      score.value = 0
+      $q.notify({ type: 'info', message: 'Teste reiniciado. Boa sorte!' })
     } else {
       const lastAnsweredIndex = Math.max(
         -1,
@@ -302,7 +422,29 @@ const startTest = async (test) => {
     loading.value = false
   }
 }
+const gotoQuestion = (newIndex) => {
+  if (!currentTest.value) return
+  if (newIndex < 0 || newIndex >= currentTest.value.questions.length) return
+  currentQuestionIndex.value = newIndex
+  const q = currentTest.value.questions[newIndex]
+  const qId = q?.id
+  if (!qId) return
+  // Se a questão está travada, apenas visualizar: mostrar resultado e travar seleção
+  if (locked.value[qId]) {
+    selectedOption.value = answers.value[qId] ?? null
+    showResult.value = true
+  } else {
+    selectedOption.value = answers.value[qId] ?? null
+    showResult.value = false
+  }
+}
+const prevQuestion = () => {
+  gotoQuestion(currentQuestionIndex.value - 1)
+}
 const selectOption = (index) => {
+  const qId = currentQuestion.value?.id
+  if (!qId) return
+  if (locked.value[qId]) return // não permitir alterar respostas já confirmadas
   if (!showResult.value) {
     selectedOption.value = index
   }
@@ -323,6 +465,10 @@ const submitAnswer = async () => {
       false,
       score.value
     )
+    // Trava a questão atual e memoriza a resposta escolhida
+    const qId = currentQuestion.value.id
+    locked.value[qId] = true
+    answers.value[qId] = selectedOption.value
   } catch (error) {
     $q.notify({
       type: 'negative',
@@ -334,9 +480,7 @@ const submitAnswer = async () => {
 }
 const nextQuestion = async () => {
   if (currentQuestionIndex.value < currentTest.value.questions.length - 1) {
-    currentQuestionIndex.value++
-    selectedOption.value = null
-    showResult.value = false
+    gotoQuestion(currentQuestionIndex.value + 1)
   } else {
     try {
       await testStore.saveUserProgress(
@@ -379,6 +523,8 @@ const endTest = async () => {
   selectedOption.value = null
   showResult.value = false
   showResultDialog.value = false
+  answers.value = {}
+  locked.value = {}
 }
 </script>
 
@@ -388,6 +534,30 @@ const endTest = async () => {
   flex-direction: column;
   min-height: 100vh;
   background-color: #f8f9fa;
+}
+
+/* Tabs de menu estilo "MÓDULOS" */
+.menu-tabs {
+  max-width: 1200px;
+  margin: 16px auto 0;
+  padding: 0 24px;
+}
+
+.tabs-modern {
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-radius: 12px;
+  overflow: hidden;
+
+  .tab-item {
+    font-weight: 500;
+    padding: 12px 24px;
+    transition: all 0.3s ease;
+
+    &:hover {
+      background: rgba(0,0,0,0.05);
+    }
+  }
 }
 
 .hero-section {
@@ -540,15 +710,50 @@ const endTest = async () => {
   }
 }
 
-.bottom-menu {
+/* Footer compacto igual ao Dashboard */
+.app-footer-compact {
   background: white;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  border-top: 1px solid #e0e0e0;
+  padding: 12px 0;
   position: sticky;
   bottom: 0;
-  z-index: 1000;
+  z-index: 900;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
 
-  .q-tabs {
+  .footer-icons-container {
+    display: flex;
     justify-content: space-around;
+    align-items: center;
+    max-width: 100%;
+    padding: 8px 0;
+
+    .footer-icon-btn {
+      transition: all 0.3s ease;
+      position: relative;
+      color: #999 !important;
+
+      &:hover {
+        color: var(--q-primary) !important;
+        transform: scale(1.1);
+      }
+
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 0;
+        height: 3px;
+        background-color: var(--q-primary);
+        border-radius: 3px;
+        transition: width 0.3s ease;
+      }
+
+      &:hover::after {
+        width: 24px;
+      }
+    }
   }
 }
 

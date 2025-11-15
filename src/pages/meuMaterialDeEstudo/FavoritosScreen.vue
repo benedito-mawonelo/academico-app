@@ -21,15 +21,16 @@
             :key="video.id"
             clickable
             v-ripple
-            @click="goToVideo(video.id)"
+            @click="goToVideo(video)"
             class="favorite-item"
           >
             <q-item-section avatar>
               <q-img :src="video.thumbnail" class="video-thumbnail" />
             </q-item-section>
             <q-item-section>
-              <q-item-label class="video-title">{{ video.title }}</q-item-label>
-              <q-item-label caption>{{ video.duration }}</q-item-label>
+              <q-item-label class="video-title">{{ video.titulo }}</q-item-label>
+              <q-item-label caption lines="2">{{ video.descricao }}</q-item-label>
+              <q-item-label caption>{{ video.duracao ? video.duracao + ' min' : '' }}</q-item-label>
             </q-item-section>
             <q-item-section side>
               <q-btn
@@ -60,34 +61,81 @@
         <q-tab name="videos" icon="ondemand_video" label="Vídeos" @click="goTo('videos')" />
         <q-tab name="favorites" icon="favorite" label="Favoritos" @click="goTo('favorites')" />
         <q-tab name="notes" icon="edit_note" label="Notas" @click="goTo('notes')" />
-        <q-tab name="doubts" icon="help" label="Dúvidas" @click="goTo('doubts')" />
-        <q-tab name="tests" icon="assignment" label="Testes" @click="goTo('tests')" />
       </q-tabs>
     </q-footer>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { getAuth } from 'firebase/auth'
+import { collection, getDocs, query, where, doc, deleteDoc } from 'firebase/firestore'
+import { db } from 'boot/firebase'
 
 const router = useRouter()
 const activeTab = ref('favorites')
-
-const videos = ref([
-  { id: 1, title: 'Matemática: Equações Lineares', thumbnail: 'https://placeimg.com/120/80/tech', duration: '15:30', isFavorite: false },
-  { id: 2, title: 'Física: Leis de Newton', thumbnail: 'https://placeimg.com/120/80/tech', duration: '22:45', isFavorite: true },
-  { id: 3, title: 'Química: Ligações Químicas', thumbnail: 'https://placeimg.com/120/80/tech', duration: '18:20', isFavorite: false },
-])
-
-const favorites = computed(() => videos.value.filter(v => v.isFavorite))
+const favorites = ref([])
 
 const goTo = (page) => router.push(`/${page}`)
-const goToVideo = (id) => router.push(`/video/${id}`)
-const toggleFavorite = (id) => {
-  const video = videos.value.find(v => v.id === id)
-  if (video) video.isFavorite = !video.isFavorite
+
+function getEmbedUrl(url) {
+  if (!url) return ''
+  // Já é embed
+  if (url.includes('/embed/')) return url
+  // youtube normal
+  if (url.includes('watch?v=')) {
+    return url.replace('watch?v=', 'embed/')
+  }
+  // youtu.be curto
+  const m = url.match(/youtu\.be\/([^?&]+)/)
+  if (m && m[1]) {
+    return `https://www.youtube.com/embed/${m[1]}`
+  }
+  return url
 }
+
+const goToVideo = (video) => {
+  const embedUrl = getEmbedUrl(video.url)
+  router.push({
+    path: '/video-player',
+    query: {
+      id: video.id,
+      titulo: video.titulo,
+      descricao: video.descricao,
+      url: embedUrl,
+      duracao: video.duracao,
+      temaId: video.temaId,
+    },
+  })
+}
+
+async function loadFavorites() {
+  const auth = getAuth()
+  const user = auth.currentUser
+  if (!user) return
+  const snap = await getDocs(query(collection(db, 'userFavorites'), where('userId', '==', user.uid)))
+  favorites.value = snap.docs.map(d => ({ id: d.data().videoId, ...d.data(), thumbnail: `https://img.youtube.com/vi/${getVideoId(d.data().url)}/mqdefault.jpg` }))
+}
+
+function getVideoId(url) {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/
+  const match = url.match(regExp)
+  return (match && match[2].length === 11) ? match[2] : ''
+}
+
+async function toggleFavorite(id) {
+  const auth = getAuth()
+  const user = auth.currentUser
+  if (!user) return
+  const ref = doc(db, 'userFavorites', `${user.uid}_${id}`)
+  await deleteDoc(ref)
+  favorites.value = favorites.value.filter(v => v.id !== id)
+}
+
+onMounted(async () => {
+  await loadFavorites()
+})
 </script>
 
 <style lang="scss" scoped>

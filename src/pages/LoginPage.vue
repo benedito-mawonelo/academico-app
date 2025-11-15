@@ -209,6 +209,8 @@ const handleLogin = async () => {
 
     if (userData.isAdmin === true) {
       router.push('/admin')
+    } else if (userData.role === 'professor') {
+      router.push('/professor')
     } else if (firstAccess) {
       router.push('/first-access')
     } else {

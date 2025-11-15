@@ -15,7 +15,10 @@
         <q-card v-if="!loading" flat bordered class="profile-card shadow-4 animate__animated animate__fadeIn">
           <q-card-section class="text-center">
             <q-avatar size="120px" class="q-mb-md">
-              <img :src="user.foto || 'https://via.placeholder.com/120'" alt="Foto do perfil" />
+              <template v-if="user.foto">
+                <img :src="user.foto" alt="Foto do perfil" />
+              </template>
+              <q-icon v-else name="person" color="grey-6" size="80px" />
             </q-avatar>
             <q-btn
               flat
@@ -249,7 +252,7 @@ onMounted(() => {
           instituicao: data.instituicao || '',
           ano: data.ano || '',
           nivel: data.nivel || '',
-          foto: data.image || 'https://via.placeholder.com/120',
+          foto: data.image || '',
           birthYear: data.birthYear || '',
           curso: data.curso || '',
           provincia: data.provincia || '',

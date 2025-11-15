@@ -3,7 +3,10 @@
     <div class="header-content">
       <div class="user-profile" @click="$emit('navigate', 'profile')">
         <q-avatar size="56px" class="profile-avatar glow-on-hover">
-          <img :src="user.avatar || 'https://randomuser.me/api/portraits/women/45.jpg'">
+          <template v-if="user.avatar">
+            <img :src="user.avatar">
+          </template>
+          <q-icon v-else name="person" color="white" />
         </q-avatar>
         <div class="user-info">
           <div class="user-name">
@@ -24,192 +27,34 @@
         </div>
       </div>
       <div class="header-actions">
-        <div class="notification-wrapper">
-          <q-btn flat round icon="notifications" color="white" class="action-btn pulse-on-notification" @click="toggleNotifications">
-            <q-badge v-if="unreadNotifications.length" color="red" floating rounded class="notification-badge" :class="{ 'pulse': unreadNotifications.length }">
-              {{ unreadNotifications.length }}
-            </q-badge>
-          </q-btn>
-          <q-menu v-model="showNotifications" anchor="bottom right" self="top right" class="notification-menu shadow-5" transition-show="fade" transition-hide="fade">
-            <q-list style="min-width: 350px" class="menu-list">
-              <q-item-label header class="text-weight-bold text-green">
-                <q-icon name="notifications" class="q-mr-sm" /> Notificações
-              </q-item-label>
-              <template v-if="notifications.length > 0">
-                <q-item v-for="(notification) in notifications.slice(0, 5)" :key="notification.id" clickable v-ripple class="notification-item" :class="{ 'unread-notification': !notification.read }" @click="handleNotificationClick(notification)">
-                  <q-item-section avatar>
-                    <q-icon :name="notification.icon" :color="notification.color" size="24px" />
-                  </q-item-section>
-                  <q-item-section>
-                    <q-item-label class="text-weight-medium">{{ notification.title }}</q-item-label>
-                    <q-item-label caption lines="2" class="text-grey-7">{{ notification.message }}</q-item-label>
-                  </q-item-section>
-                  <q-item-section side top>
-                    <q-item-label caption class="text-grey-5">{{ formatTime(notification.time) }}</q-item-label>
-                  </q-item-section>
-                </q-item>
-                <q-separator class="q-my-sm" />
-                <q-item clickable v-ripple class="text-green text-weight-medium" @click="$emit('navigate', 'notificacoes')">
-                  <q-item-section avatar>
-                    <q-icon name="list_alt" color="green" />
-                  </q-item-section>
-                  <q-item-section>Ver todas as notificações</q-item-section>
-                  <q-item-section side>
-                    <q-icon name="chevron_right" color="green" />
-                  </q-item-section>
-                </q-item>
-              </template>
-              <q-item v-else class="text-center q-py-lg">
-                <q-item-section>
-                  <q-icon name="notifications_off" size="xl" color="grey-4" class="q-mb-sm" />
-                  <q-item-label class="text-grey-6">Nenhuma notificação</q-item-label>
-                </q-item-section>
-              </q-item>
-            </q-list>
-          </q-menu>
-        </div>
-        <q-btn
-  flat
-  round
-  :icon="showMenu ? 'close' : 'menu'"
-  color="white"
-  class="action-btn"
-  @click="toggleMenu"
-  ref="menuAnchor"
-/>
-
-
-<q-menu
-  v-model="showMenu"
-  :target="menuAnchor"
-  anchor="bottom right"
-  self="top right"
-  transition-show="fade"
-  transition-hide="fade"
-  @before-show="showMenu = true"
-  @hide="showMenu = false"
->
-            <q-list style="min-width: 250px" class="menu-list">
-              <q-item-label header class="text-weight-bold text-green">
-                <q-icon name="person" class="q-mr-sm" /> {{ user.name || 'Usuário' }}
-              </q-item-label>
-              <q-item clickable v-ripple class="menu-item" @click="$emit('navigate', 'profile')">
-                <q-item-section avatar>
-                  <q-icon name="person" color="green" />
-                </q-item-section>
-                <q-item-section>Meu Perfil</q-item-section>
-                <q-item-section side>
-                  <q-icon name="chevron_right" color="grey-5" />
-                </q-item-section>
-              </q-item>
-              <q-item clickable v-ripple class="menu-item" @click="$emit('navigate', 'settings')">
-                <q-item-section avatar>
-                  <q-icon name="settings" color="green" />
-                </q-item-section>
-                <q-item-section>Configurações</q-item-section>
-                <q-item-section side>
-                  <q-icon name="chevron_right" color="grey-5" />
-                </q-item-section>
-              </q-item>
-              <q-item clickable v-ripple class="menu-item" @click="$emit('navigate', 'Cadeiras')">
-                <q-item-section avatar>
-                  <q-icon name="school" color="green" />
-                </q-item-section>
-                <q-item-section>Minhas Cadeiras</q-item-section>
-                <q-item-section side>
-                  <q-icon name="chevron_right" color="grey-5" />
-                </q-item-section>
-              </q-item>
-              <q-item clickable v-ripple class="menu-item" @click="$emit('navigate', 'ebooks')">
-                <q-item-section avatar>
-                  <q-icon name="menu_book" color="green" />
-                </q-item-section>
-                <q-item-section>Livros Digitais</q-item-section>
-                <q-item-section side>
-                  <q-icon name="chevron_right" color="grey-5" />
-                </q-item-section>
-              </q-item>
-              <q-item clickable v-ripple class="menu-item" @click="$emit('navigate', 'loja-academica')">
-                <q-item-section avatar>
-                  <q-icon name="shopping_cart" color="green" />
-                </q-item-section>
-                <q-item-section>Loja Acadêmica</q-item-section>
-                <q-item-section side>
-                  <q-icon name="chevron_right" color="grey-5" />
-                </q-item-section>
-              </q-item>
-              <q-separator class="q-my-sm" />
-              <q-item clickable v-ripple class="menu-item text-negative" @click="logout">
-                <q-item-section avatar>
-                  <q-icon name="logout" color="negative" />
-                </q-item-section>
-                <q-item-section>Sair</q-item-section>
-              </q-item>
-            </q-list>
-          </q-menu>
-        <!-- </q-btn> -->
+        <!-- Ícones de notificações e logout removidos conforme solicitado -->
       </div>
     </div>
   </header>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useQuasar, QAvatar, QBadge, QBtn, QIcon, QChip, QMenu, QList, QItem, QItemSection, QItemLabel, QSeparator } from 'quasar';
+import { useQuasar, QAvatar, QBadge, QIcon, QChip } from 'quasar';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { firebaseAuth, db } from 'boot/firebase';
 
 const $q = useQuasar();
 const router = useRouter();
-const menuAnchor = ref(null);
-
 
 const user = ref({
   name: 'Estudante',
   apelido: '',
   instituicao: 'N/A',
   curso: 'N/A',
-  avatar: 'https://randomuser.me/api/portraits/women/45.jpg',
+  avatar: '',
   isPro: false,
   isLoaded: false
 });
 
-const showNotifications = ref(false);
-const showMenu = ref(false);
-
-const notifications = ref([
-  {
-    id: 1,
-    title: 'Novo Curso Disponível',
-    message: 'Curso de Inteligência Artificial já está na loja!',
-    icon: 'school',
-    color: 'green',
-    time: new Date(Date.now() - 1000 * 60 * 10),
-    read: false
-  },
-  {
-    id: 2,
-    title: 'Desconto Exclusivo',
-    message: '40% de desconto em todos os cursos de Tecnologia!',
-    icon: 'local_offer',
-    color: 'yellow',
-    time: new Date(Date.now() - 1000 * 60 * 60),
-    read: false
-  },
-  {
-    id: 3,
-    title: 'Certificado Gerado',
-    message: 'Seu certificado de Marketing Digital está disponível.',
-    icon: 'workspace_premium',
-    color: 'teal',
-    time: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    read: true
-  }
-]);
-
-const unreadNotifications = computed(() => notifications.value.filter(n => !n.read));
+// Estados de notificações/logout removidos (header simplificado)
 
 onMounted(async () => {
   onAuthStateChanged(firebaseAuth, async (authUser) => {
@@ -224,7 +69,7 @@ onMounted(async () => {
             apelido: data.apelido || '',
             instituicao: data.instituicao || 'N/A',
             curso: data.curso || 'N/A',
-            avatar: data.image || 'https://randomuser.me/api/portraits/women/45.jpg',
+            avatar: data.image || '',
             isPro: data.isPro || false,
             isLoaded: true
           };
@@ -256,46 +101,11 @@ onMounted(async () => {
   });
 });
 
-function toggleNotifications() {
-  console.log('Toggling notifications, current state:', showNotifications.value);
-  showNotifications.value = !showNotifications.value;
-  if (showNotifications.value) {
-    notifications.value.forEach(n => (n.read = true));
-  }
-}
-
-function toggleMenu() {
-  showMenu.value = !showMenu.value;
-
-  console.log('Toggling menu, current state:', showMenu.value);
-}
-
-function handleNotificationClick(notification) {
-  if (!notification.read) {
-    notification.read = true;
-  }
-}
-
-function formatTime(date) {
-  const now = new Date();
-  const diff = now - date;
-  const minutes = Math.floor(diff / (1000 * 60));
-  if (minutes < 60) return `${minutes} min atrás`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} h atrás`;
-  const days = Math.floor(hours / 24);
-  return `${days} d atrás`;
-}
-
 function capitalizeWords(text) {
   if (!text) return '';
   return text.replace(/\b\w/g, char => char.toUpperCase());
 }
 
-function logout() {
-  firebaseAuth.signOut();
-  router.push('/login');
-}
 </script>
 
 <style lang="scss" scoped>

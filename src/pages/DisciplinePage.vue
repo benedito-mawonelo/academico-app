@@ -1,57 +1,67 @@
 <template>
-  <q-page class="cadeiras-page">
-    <!-- Hero Section -->
-    <div class="hero-section">
-      <div class="hero-overlay"></div>
-      <div class="hero-content">
-        <h1 class="hero-title animate__animated animate__fadeInDown">Descubra Suas Cadeiras</h1>
-        <p class="hero-subtitle animate__animated animate__fadeIn animate__delay-1s">
-          Explore disciplinas, acesse materiais e eleve sua aprendizagem
-        </p>
-        <q-btn
-          unelevated
-          color="accent"
-          label="Como Funciona?"
-          icon="help_outline"
-          class="hero-button animate__animated animate__fadeInUp animate__delay-1s"
-          @click="showTutorial"
-        />
+  <div class="app-layout">
+    <!-- Header Modernizado -->
+    <header class="app-header">
+      <div class="header-content">
+        <div class="user-profile">
+          <q-avatar size="52px" class="profile-avatar glow-on-hover">
+            <template v-if="user.avatar">
+              <img :src="user.avatar">
+            </template>
+            <q-icon v-else name="person" color="white" />
+          </q-avatar>
+          <div class="user-info">
+            <div class="user-name">
+              <span class="name-text">{{ capitalizeWords(user.name + " " + user.apelido) }}</span>
+              <q-icon
+                v-if="user.isPro"
+                name="verified"
+                size="18px"
+                color="accent"
+                class="q-ml-xs"
+              />
+              <q-badge
+                rounded
+                :color="user.isPro ? 'accent' : 'grey-6'"
+                class="plan-badge q-ml-xs"
+                text-color="white"
+              >
+                {{ user.isPro ? 'PRO' : 'BÁSICO' }}
+              </q-badge>
+            </div>
+            <div class="user-details">
+              <q-chip dense size="sm" color="primary" text-color="white" icon="school" class="q-mr-xs">
+                {{ capitalizeWords(user.curso) }}
+              </q-chip>
+              <q-chip dense size="sm" color="secondary" text-color="white" icon="apartment" class="q-mr-xs">
+                {{ user.instituicao?.toUpperCase() }}
+              </q-chip>
+            </div>
+          </div>
+        </div>
+
+        <div class="header-actions">
+        </div>
       </div>
-      <!-- <div class="hero-wave"></div> -->
-    </div>
+    </header>
 
-    <!-- Main Content -->
-    <div class="page-content q-pa-lg">
-      <!-- Search and Filter -->
-      <div class="search-filter-container q-mb-lg animate__animated animate__fadeIn">
-        <q-input
-          v-model="searchTerm"
-          outlined
-          dense
-          placeholder="Pesquisar cadeiras..."
-          class="search-input"
-          bg-color="white"
-          rounded
-        >
-          <template v-slot:prepend>
-            <q-icon name="search" color="primary" />
-          </template>
-        </q-input>
-
-        <q-select
-          v-model="filterSemester"
-          outlined
-          dense
-          options-dense
-          :options="semesterOptions"
-          label="Filtrar por semestre"
-          class="filter-select"
-          bg-color="white"
-          rounded
-          clearable
-        />
-      </div>
-
+    <!-- Page Content -->
+    <q-page class="cadeiras-page">
+      <!-- Main Content -->
+      <div class="page-content q-pa-lg">
+        <!-- Como Funciona Button -->
+        <div class="como-funciona-btn">
+          <q-btn
+            round
+            color="accent"
+            icon="help_outline"
+            size="lg"
+            class="help-button"
+            @click="showTutorial"
+          >
+            <q-tooltip anchor="left middle" self="right middle">Como Funciona?</q-tooltip>
+          </q-btn>
+        </div>
       <!-- Loading State -->
       <div v-if="loading" class="loading-container">
         <q-spinner-orbit color="primary" size="xl" />
@@ -137,15 +147,60 @@
         </q-card>
       </div>
     </div>
-  </q-page>
+    </q-page>
+
+    <!-- Footer com 3 Ícones -->
+    <footer class="app-footer-compact">
+      <div class="footer-icons-container">
+        <q-btn
+          flat
+          round
+          icon="home"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('dashboard')"
+        >
+          <q-tooltip>Dashboard</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="notifications"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('notificacoes')"
+        >
+          <q-badge v-if="unreadNotifications.length" color="red" floating rounded>
+            {{ unreadNotifications.length }}
+          </q-badge>
+          <q-tooltip>Notificações</q-tooltip>
+        </q-btn>
+        <q-btn
+          flat
+          round
+          icon="person"
+          color="grey-8"
+          size="lg"
+          class="footer-icon-btn"
+          @click="goTo('profile')"
+        >
+          <q-tooltip>Perfil</q-tooltip>
+        </q-btn>
+      </div>
+    </footer>
+  </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { collection, getDocs, query, orderBy } from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, onSnapshot, where, getDoc, doc } from 'firebase/firestore'
 import { db } from 'boot/firebase'
 import { useQuasar } from 'quasar'
+import { onAuthStateChanged } from 'firebase/auth'
+import { firebaseAuth } from 'boot/firebase'
 
 const $q = useQuasar()
 const router = useRouter()
@@ -156,14 +211,27 @@ const searchTerm = ref('')
 const filterSemester = ref(null)
 const cardVisible = ref([])
 
-const semesterOptions = [
-  { label: '1º Semestre', value: 1 },
-  { label: '2º Semestre', value: 2 },
-  { label: '3º Semestre', value: 3 },
-  { label: '4º Semestre', value: 4 },
-  { label: '5º Semestre', value: 5 },
-  { label: '6º Semestre', value: 6 }
-]
+// User and notifications data
+const user = ref({
+  name: '',
+  isPro: true,
+  avatar: ''
+})
+const notifications = ref([])
+let unsubNotifications = null
+
+const unreadNotifications = computed(() => {
+  return notifications.value.filter(n => !n.read)
+})
+
+const goTo = (page) => {
+  router.push(`/${page}`)
+}
+
+function capitalizeWords(text) {
+  if (!text) return ''
+  return text.replace(/\b\w/g, (char) => char.toUpperCase())
+}
 
 const iconOptions = [
   'school', 'psychology', 'calculate', 'biotech', 'code', 'history_edu',
@@ -274,8 +342,52 @@ function goToCadeira(id) {
   router.push(`/cadeiras/${id}`)
 }
 
-onMounted(async () => {
-  await loadData()
+onMounted(() => {
+  onAuthStateChanged(firebaseAuth, async (authUser) => {
+    if (authUser) {
+      const docRef = doc(db, 'users_academico', authUser.uid)
+      const docSnap = await getDoc(docRef)
+
+      if (docSnap.exists()) {
+        const data = docSnap.data()
+        user.value = {
+          name: data.name || '',
+          apelido: data.apelido || '',
+          instituicao: data.instituicao || '',
+          curso: data.curso || '',
+          avatar: data.image || '',
+          provincia: data.provincia || '',
+          telefone: data.telefone || '',
+          email: data.email || '',
+          isLoaded: true
+        }
+      } else {
+        console.error('Documento do usuário não encontrado.')
+      }
+
+      // Subscrever notificações em tempo real
+      if (unsubNotifications) unsubNotifications()
+      const qn = query(
+        collection(db, 'notifications'),
+        where('userId', '==', authUser.uid),
+        orderBy('createdAt', 'desc')
+      )
+      unsubNotifications = onSnapshot(qn, (snap) => {
+        notifications.value = snap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+          time: d.data().createdAt?.toDate ? d.data().createdAt.toDate() : new Date(),
+          read: !!d.data().read
+        }))
+      })
+    } else {
+      notifications.value = []
+      if (unsubNotifications) unsubNotifications()
+      unsubNotifications = null
+    }
+  })
+
+  loadData()
 })
 </script>
 
@@ -298,6 +410,24 @@ onMounted(async () => {
     background-size: 30px 30px;
     opacity: 0.5;
     z-index: 0;
+  }
+}
+
+.como-funciona-btn {
+  position: fixed;
+  right: 30px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 500;
+
+  .help-button {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    transition: all 0.3s ease;
+
+    &:hover {
+      transform: scale(1.15);
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+    }
   }
 }
 
@@ -573,6 +703,133 @@ onMounted(async () => {
 
   .cadeiras-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Header Modernizado */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+.app-header {
+  background: white;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  padding: 12px 24px;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  transition: all 0.3s ease;
+
+  .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .user-profile {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+
+    &:hover {
+      transform: translateX(5px);
+
+      .profile-avatar {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.2);
+      }
+    }
+
+    .profile-avatar {
+      transition: all 0.3s ease;
+      border: 2px solid white;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+
+      img {
+        object-fit: cover;
+      }
+    }
+
+    .user-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+
+      .user-name {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-weight: 600;
+        color: var(--q-dark);
+
+        .name-text {
+          font-size: 0.95rem;
+        }
+
+        .plan-badge {
+          font-size: 0.7rem;
+          padding: 2px 8px;
+        }
+      }
+
+      .user-details {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+    }
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+}
+
+/* Footer com 3 Ícones */
+.app-footer-compact {
+  background: white;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+  padding: 12px 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 1001;
+  margin-top: auto;
+
+  .footer-icons-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 40px;
+    max-width: 1400px;
+    margin: 0 auto;
+    width: 100%;
+
+    .footer-icon-btn {
+      position: relative;
+      transition: all 0.3s ease;
+      color: var(--q-grey-8);
+
+      &:hover {
+        transform: scale(1.2) translateY(-4px);
+        color: var(--q-primary);
+      }
+
+      .q-badge {
+        font-size: 0.7rem;
+        padding: 0 4px;
+      }
+    }
   }
 }
 
